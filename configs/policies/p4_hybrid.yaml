@@ -1,0 +1,8 @@
+policy:
+  name: p4_hybrid
+  description: "Keyword-based routing: specific queries → BM25, conceptual → vector. Always retrieves."
+  retrieval_mode: hybrid
+  cite_sources: false
+  # BM25 vs vector weighting in RRF (higher = more weight)
+  bm25_weight: 0.6
+  vector_weight: 0.4

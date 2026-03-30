@@ -1,0 +1,6 @@
+policy:
+  name: p6_user_toggle
+  description: "User selects Fast Answer (closed-book) or Sourced Answer (retrieval) via Gradio UI."
+  # The actual retrieval mode is set at runtime based on user choice.
+  retrieval_mode: user_choice
+  cite_sources: true            # always cite when user requests sourced answer

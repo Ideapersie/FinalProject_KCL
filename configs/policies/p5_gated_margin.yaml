@@ -1,0 +1,10 @@
+policy:
+  name: p5_gated
+  description: "Training-free gating with Logit Margin signal. Retrieves when top-2 tokens are close."
+  retrieval_mode: hybrid
+  cite_sources: false
+
+gate:
+  type: margin
+  margin_threshold: 0.3         # retrieve if mean(p_top1 - p_top2) < threshold
+  draft_max_tokens: 48

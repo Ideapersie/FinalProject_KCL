@@ -1,0 +1,12 @@
+policy:
+  name: p5_gated
+  description: "Training-free gating via verbalized confidence. Asks model to self-assess before answering."
+  retrieval_mode: hybrid
+  cite_sources: false
+
+gate:
+  type: verbalized
+  verbalized_max_tokens: 10     # keep the confidence-check call short
+  verbalized_labels:
+    retrieve: [MEDIUM, LOW]
+    skip: [HIGH]

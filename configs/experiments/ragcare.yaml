@@ -1,0 +1,13 @@
+# ragcare.yaml — Sprint 5 RAGCare-QA benchmark
+
+name: ragcare_p5_entropy_medium
+dataset: ragcare
+max_questions: null             # run all 420 questions
+policy: p5_gated
+
+gate:
+  type: entropy
+  entropy_threshold: 2.5
+
+hardware_config: configs/hardware_medium.yaml
+output: results/raw_logs/ragcare_p5_entropy_medium.jsonl

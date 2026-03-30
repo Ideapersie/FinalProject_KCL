@@ -1,0 +1,5 @@
+policy:
+  name: p3_closed_book
+  description: "No retrieval. Model answers entirely from parametric knowledge."
+  retrieval_mode: none
+  cite_sources: false

@@ -1,0 +1,17 @@
+# threshold_sweep.yaml — Sprint 4 calibration experiment
+# Runs P5 entropy gate with a grid of thresholds on a 500-question MIRAGE subset
+# to find the optimal threshold (ECE-minimising and accuracy-preserving).
+
+name: threshold_sweep_entropy_medium
+dataset: mirage
+max_questions: 500              # stratified sample: ~100 per risk level
+policy: p5_gated
+
+gate:
+  type: entropy
+  draft_max_tokens: 48
+  # Grid of thresholds to sweep — run once per threshold value
+  entropy_threshold_grid: [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
+
+hardware_config: configs/hardware_medium.yaml
+output: results/raw_logs/threshold_sweep_entropy_medium.jsonl

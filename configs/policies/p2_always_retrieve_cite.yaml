@@ -1,0 +1,5 @@
+policy:
+  name: p2_always_retrieve_cite
+  description: "P1 plus mandatory source citation extraction in the answer."
+  retrieval_mode: hybrid
+  cite_sources: true

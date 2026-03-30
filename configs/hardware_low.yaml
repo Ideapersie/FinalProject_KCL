@@ -1,0 +1,26 @@
+# hardware_low.yaml — 4 GB RAM, dual-core CPU (Chromebook / old laptop)
+# Only deltas from base.yaml are listed here.
+
+hardware:
+  tier: low
+  n_threads: 2
+  n_batch: 64
+
+model:
+  name: llama-3.2-1b
+  gguf_path: models/llama-3.2-1b-q4_k_m.gguf
+  n_ctx: 1024
+  # Disable logits_all on low tier to save ~256 MB RAM.
+  # This means entropy + margin gates are unavailable; only verbalized gate works.
+  logits_all: false
+  max_new_tokens: 128
+
+retrieval:
+  bm25_index:  indexes/bm25_statpearls.pkl
+  faiss_index: indexes/faiss_statpearls.index
+  top_k: 3
+  corpora:
+    - statpearls        # textbooks omitted to reduce index RAM footprint
+
+gate:
+  type: verbalized      # only gate available when logits_all=false

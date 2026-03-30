@@ -1,0 +1,49 @@
+# ──────────────────────────────────────────────────────────────
+# Core dependencies — pinned for reproducibility
+# Install: pip install -r requirements.txt
+#
+# NOTE: llama-cpp-python must be compiled for CPU-only on the
+# target machine. Use the CMAKE_ARGS env var if needed:
+#   CMAKE_ARGS="-DLLAMA_BLAS=ON -DLLAMA_BLAS_VENDOR=OpenBLAS" \
+#   pip install llama-cpp-python==0.3.19
+# ──────────────────────────────────────────────────────────────
+
+# LLM inference (CPU-only GGUF)
+llama-cpp-python>=0.3.19
+
+# Retrieval
+rank-bm25>=0.2.2
+faiss-cpu>=1.7.4
+sentence-transformers>=2.6.0
+
+# Data loading
+datasets>=2.14.0
+huggingface-hub>=0.22.0
+
+# Config + validation
+pydantic>=2.0
+pyyaml>=6.0
+
+# Profiling / energy measurement
+codecarbon>=2.4.0
+psutil>=5.9.0
+
+# Numerics / evaluation
+numpy>=1.26
+scipy>=1.11
+pandas>=2.0
+
+# Visualisation
+matplotlib>=3.8
+seaborn>=0.13
+
+# UI (Policy P6)
+gradio>=4.0.0
+
+# Testing (dev only)
+pytest>=8.0
+pytest-mock>=3.12
+pytest-cov>=4.1
+
+# Optional: GPT-4o-mini reference baseline
+# openai>=1.0

@@ -1,0 +1,108 @@
+# ─────────────────────────────────────────────────────────────────
+# base.yaml  —  shared defaults for all experiments
+# Override specific keys in hardware_*.yaml, policies/*.yaml,
+# and experiments/*.yaml files. load_config() deep-merges them.
+# ─────────────────────────────────────────────────────────────────
+
+# Reproducibility seed — used for LLM init AND any numpy random ops
+seed: 42
+
+# ── Paths (relative to project root) ─────────────────────────────
+paths:
+  data_raw:       data/raw
+  data_processed: data/processed
+  corpora:        data/corpora
+  indexes:        indexes
+  models:         models
+  results:        results/raw_logs
+  aggregated:     results/aggregated
+  figures:        results/figures
+
+# ── Hardware tier (overridden by hardware_*.yaml) ─────────────────
+hardware:
+  tier: medium                  # low | medium | high
+  n_threads: 4
+  n_batch: 128
+
+# ── Model defaults ────────────────────────────────────────────────
+model:
+  name: llama-3.2-3b
+  gguf_path: models/llama-3.2-3b-q4_k_m.gguf
+  n_ctx: 2048
+  # IMPORTANT: logits_all=true is required for entropy + margin gates.
+  # It causes llama-cpp-python to retain all token logit arrays in memory
+  # (~256 MB additional RAM for a 32K vocab at 2048 context).
+  # Set to false on low-tier hardware — disables entropy/margin gates.
+  logits_all: true
+  temperature: 0.0              # greedy decode — required for reproducibility
+  max_new_tokens: 256
+  verbose: false
+
+# ── Retrieval defaults ────────────────────────────────────────────
+retrieval:
+  bm25_index:     indexes/bm25_combined.pkl
+  faiss_index:    indexes/faiss_combined.index
+  embedding_model: sentence-transformers/all-MiniLM-L6-v2
+  top_k: 5
+  # Corpora to build indexes from. Reduce to [statpearls] on low tier.
+  corpora:
+    - statpearls
+    - textbooks
+  # RRF fusion constant (k in RRF = 1/(k + rank))
+  rrf_k: 60
+  # P4 hybrid router: route to BM25 when query contains these patterns
+  bm25_route_patterns:
+    - "\\b[0-9]+\\s*(mg|mcg|ml|kg|mmol)\\b"   # dosing / numerical values
+    - "\\bICD-?[0-9]\\b"                         # ICD codes
+    - "contraindicated"
+    - "interaction"
+    - "overdose"
+    - "\\b[A-Z][a-z]+(mab|nib|vir|cillin|mycin|pril|sartan)\\b"  # drug suffixes
+
+# ── Gate defaults (P5 only) ───────────────────────────────────────
+gate:
+  type: entropy                 # entropy | margin | verbalized
+  # Entropy gate: retrieve if mean token entropy (nats) > threshold
+  entropy_threshold: 2.5
+  # Margin gate: retrieve if mean(p_top1 - p_top2) < threshold
+  margin_threshold: 0.3
+  # Number of draft tokens to generate before computing gate signal
+  draft_max_tokens: 48
+  # Verbalized gate: which model responses trigger retrieval
+  verbalized_labels:
+    retrieve: [MEDIUM, LOW]
+    skip: [HIGH]
+  # Max tokens for the confidence-assessment call (keep short)
+  verbalized_max_tokens: 10
+
+# ── Evaluation ────────────────────────────────────────────────────
+evaluation:
+  # batch_size must stay 1 — sequential processing needed for accurate
+  # per-query energy measurement via codecarbon
+  batch_size: 1
+  # null = run all questions; set an integer for dev/debug runs
+  max_questions: null
+  datasets:
+    - mirage
+    - ragcare
+    - acute_care
+  compute_ece: true
+  ece_n_bins: 10
+  # Risk-level accuracy thresholds for safety envelope computation
+  safety_thresholds:
+    low: 0.70
+    medium: 0.80
+    high: 0.90
+
+# ── Profiling ─────────────────────────────────────────────────────
+profiling:
+  track_energy: true
+  track_memory: true
+  track_latency: true
+  # ISO 3166-1 alpha-3 country code for codecarbon carbon intensity lookup
+  codecarbon_country_iso_code: GBR
+
+# ── Policy ────────────────────────────────────────────────────────
+# Overridden by configs/policies/*.yaml
+policy:
+  name: p3_closed_book         # default for safety if none specified

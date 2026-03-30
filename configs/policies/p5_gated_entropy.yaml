@@ -1,0 +1,10 @@
+policy:
+  name: p5_gated
+  description: "Training-free gating with Token Entropy signal. Retrieves only when model is uncertain."
+  retrieval_mode: hybrid
+  cite_sources: false
+
+gate:
+  type: entropy
+  entropy_threshold: 2.5        # nats; tuned via threshold sweep (Sprint 4)
+  draft_max_tokens: 48

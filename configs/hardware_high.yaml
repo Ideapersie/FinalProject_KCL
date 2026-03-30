@@ -1,0 +1,17 @@
+# hardware_high.yaml — 16 GB+ RAM, 6+ core CPU (workstation)
+# Only deltas from base.yaml are listed here.
+
+hardware:
+  tier: high
+  n_threads: 8
+  n_batch: 512
+
+model:
+  name: phi-3.5-mini
+  gguf_path: models/phi-3.5-mini-q4_k_m.gguf
+  n_ctx: 4096
+  logits_all: true
+  max_new_tokens: 512
+
+retrieval:
+  top_k: 7

@@ -1,0 +1,14 @@
+# full_mirage.yaml — Sprint 5 full MIRAGE benchmark
+# Template: fill in policy + gate + hardware_config per run.
+
+name: full_mirage_p5_entropy_medium
+dataset: mirage
+max_questions: null             # run all 7,663 questions
+policy: p5_gated
+
+gate:
+  type: entropy
+  entropy_threshold: 2.5        # from threshold sweep results
+
+hardware_config: configs/hardware_medium.yaml
+output: results/raw_logs/full_mirage_p5_entropy_medium.jsonl

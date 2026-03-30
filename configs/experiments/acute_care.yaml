@@ -1,0 +1,14 @@
+# acute_care.yaml — Sprint 5 Synthetic Acute-Care benchmark
+# All questions are high-risk (drug interactions, contraindications, emergency triage).
+
+name: acute_care_p5_entropy_medium
+dataset: acute_care
+max_questions: null
+policy: p5_gated
+
+gate:
+  type: entropy
+  entropy_threshold: 2.5
+
+hardware_config: configs/hardware_medium.yaml
+output: results/raw_logs/acute_care_p5_entropy_medium.jsonl

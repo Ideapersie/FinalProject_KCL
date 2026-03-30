@@ -1,0 +1,5 @@
+policy:
+  name: p1_always_retrieve
+  description: "Every query triggers full BM25 + vector hybrid retrieval."
+  retrieval_mode: hybrid        # bm25 | vector | hybrid
+  cite_sources: false
