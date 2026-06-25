@@ -84,7 +84,8 @@ class TestLoadConfig:
         assert cfg.hardware.tier == "low"
         assert cfg.hardware.n_threads == 2
         assert cfg.model.logits_all is False
-        assert cfg.gate.type == "verbalized"
+        # Low tier falls back to the probe-only gate (no raw logits available).
+        assert cfg.gate.type == "hallucination_probe"
 
     def test_medium_hardware(self) -> None:
         cfg = load_config(
