@@ -8,7 +8,7 @@ so that policies can be written against a single type, not a specific backend.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -18,9 +18,10 @@ class LLMBackend(ABC):
     Abstract LLM backend.
 
     Subclasses must implement:
-      - draft()  : generate a short completion and return raw logits
-      - answer() : generate a full answer given an optional context
-      - close()  : release any resources (model weights, file handles, etc.)
+      - draft()             : generate a short completion and return raw logits
+      - answer()            : generate a full answer given an optional context
+      - get_top2_logprobs() : generate a draft and return per-token top-2 logprobs
+      - close()             : release any resources (model weights, file handles, etc.)
     """
 
     @abstractmethod
@@ -59,6 +60,31 @@ class LLMBackend(ABC):
 
         Returns:
             The generated answer string.
+        """
+
+    @abstractmethod
+    def get_top2_logprobs(
+        self,
+        prompt: str,
+        max_tokens: int = 48,
+    ) -> Tuple[str, List[Dict[str, float]]]:
+        """
+        Generate a short draft and return per-token top-2 log-probabilities.
+
+        Unlike draft(), this works even when full logits are unavailable
+        (e.g. logits_all=False on the low tier), because it relies on the
+        completion API's logprobs output rather than the raw _scores buffer.
+        It is the signal source for the logit-margin gate.
+
+        Args:
+            prompt:     The full prompt string.
+            max_tokens: Maximum number of tokens to generate.
+
+        Returns:
+            (text, top_logprobs)
+            - text:         The generated text string.
+            - top_logprobs: One dict per generated token, mapping token string
+                            to its log-probability (top-2 entries each).
         """
 
     @abstractmethod
