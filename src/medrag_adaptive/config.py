@@ -75,11 +75,35 @@ class VerbalisedLabels(BaseModel):
     skip:     List[str] = ["HIGH"]
 
 
+class HallucinationProbeConfig(BaseModel):
+    """Settings for the draft-consistency (hallucination probe) gate."""
+    enabled:        bool = True
+    # letter_match for MCQ (compare extracted option letters);
+    # f1_threshold for open-ended (retrieve if token-F1 between drafts < threshold).
+    agreement_mode: Literal["letter_match", "f1_threshold"] = "letter_match"
+    f1_threshold:   float = 0.7
+    max_tokens:     int   = 48
+
+
 class GateConfig(BaseModel):
-    type:                  Literal["entropy", "margin", "verbalized"] = "entropy"
+    # entropy | margin | hallucination_probe : single-signal gates.
+    # ensemble : majority vote over `ensemble_members`.
+    # verbalized : deprecated (replaced by hallucination_probe); kept for ablation.
+    type:                  Literal[
+        "entropy", "margin", "hallucination_probe", "ensemble", "verbalized"
+    ] = "entropy"
     entropy_threshold:     float = 2.5
     margin_threshold:      float = 0.3
     draft_max_tokens:      int   = 48
+    # Ensemble: which single gates vote, and how many votes trigger retrieval.
+    ensemble_members:      List[str] = Field(
+        default_factory=lambda: ["entropy", "margin", "hallucination_probe"]
+    )
+    ensemble_min_votes:    int   = 2
+    hallucination_probe:   HallucinationProbeConfig = Field(
+        default_factory=HallucinationProbeConfig
+    )
+    # Deprecated verbalized-confidence settings (retained for ablation only).
     verbalized_labels:     VerbalisedLabels = Field(default_factory=VerbalisedLabels)
     verbalized_max_tokens: int   = 10
 
@@ -204,8 +228,36 @@ def load_config(
         if extra is not None:
             merged = _deep_merge(merged, _load_yaml(extra))
 
-    # Flatten the 'name' field from experiment YAML if present
+    merged = _normalise_experiment_keys(merged)
+    return ProjectConfig.model_validate(merged)
+
+
+def _normalise_experiment_keys(merged: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Reconcile the convenience shape used by experiment YAMLs with the nested
+    ProjectConfig schema. Experiment files use a few flat top-level keys for
+    brevity; map them onto their nested homes before validation:
+
+        name              -> experiment_name
+        max_questions     -> evaluation.max_questions
+        policy: <string>  -> policy.name
+        hardware_config   -> merge in the referenced hardware YAML
+    """
     if "name" in merged:
         merged["experiment_name"] = merged.pop("name")
 
-    return ProjectConfig.model_validate(merged)
+    # A referenced hardware file is merged as a (low-precedence) base so that
+    # explicit keys already in `merged` still win.
+    hw_ref = merged.pop("hardware_config", None)
+    if hw_ref:
+        merged = _deep_merge(_load_yaml(hw_ref), merged)
+
+    if "max_questions" in merged:
+        merged.setdefault("evaluation", {})
+        merged["evaluation"]["max_questions"] = merged.pop("max_questions")
+
+    # `policy:` may be a string shorthand for the policy name, or a full object.
+    if isinstance(merged.get("policy"), str):
+        merged["policy"] = {"name": merged["policy"]}
+
+    return merged
