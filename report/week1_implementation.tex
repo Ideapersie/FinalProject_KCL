@@ -1,0 +1,352 @@
+% =====================================================================
+%  Week 1 Implementation — drop-in chapter section for the dissertation
+%  Project: Adaptive Retrieval Gating for Safety-Aware Medical RAG
+%  Author:  Tharit Mohamed Hussain Khan (22058691), KCL MSc AI, 7CCSMPRJ
+%
+%  This file is self-contained for the listings/booktabs packages it uses.
+%  To include it in the main report:  \input{week1_implementation}
+%  Required preamble packages (add to main.tex if not already present):
+%    \usepackage{booktabs}     % professional tables
+%    \usepackage{listings}     % code listings
+%    \usepackage{xcolor}       % listing colours
+%    \usepackage{amsmath}      % aligned equations
+% =====================================================================
+
+% ---- Listing style (safe to keep here; remove if defined globally) ----
+\lstdefinestyle{pyqvault}{
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{blue!70!black}\bfseries,
+  commentstyle=\color{green!45!black}\itshape,
+  stringstyle=\color{red!60!black},
+  numberstyle=\tiny\color{gray},
+  numbers=left, numbersep=6pt,
+  frame=single, rulecolor=\color{gray!40},
+  breaklines=true, showstringspaces=false,
+  language=Python, captionpos=b,
+}
+
+% =====================================================================
+\section{Foundation Layer Implementation (Week 1)}
+\label{sec:impl-week1}
+
+This section documents the foundation layer of the system: the components
+built and verified in the first development sprint. The design goal of this
+sprint was a fully testable pipeline skeleton --- configuration, data
+contracts, dataset ingestion, retrieval, baseline policies, profiling and
+scoring --- such that every later component (the retrieval gates that
+constitute the project's core novelty) could be slotted into a stable,
+test-covered structure rather than built against a moving target. The sprint
+closed with the first real end-to-end measurement: the closed-book baseline
+running on the local quantised model over 200 medical questions.
+
+% ---------------------------------------------------------------------
+\subsection{Architectural Overview}
+\label{sec:impl-arch}
+
+The system is organised as a six-layer pipeline in which each layer depends
+only on the layers beneath it, communicating exclusively through the shared
+data contracts of Layer~2. This strict layering is a deliberate design
+decision: it allows each component to be unit-tested in isolation against
+mock collaborators, and it ensures that the retrieval gates (Layer~5) can be
+developed without modifying any earlier layer. The layers are:
+
+\begin{enumerate}
+  \item \textbf{Configuration} --- a four-file YAML hierarchy validated into a
+        typed object;
+  \item \textbf{Data contracts} --- the \texttt{UnifiedQuestion},
+        \texttt{PolicyResult} and \texttt{RunRecord} dataclasses through which
+        all other layers communicate;
+  \item \textbf{Data ingestion} --- dataset loaders and the clinical-risk
+        tagger that normalise heterogeneous sources into
+        \texttt{UnifiedQuestion} objects;
+  \item \textbf{Models and retrieval} --- the local LLM backend and the BM25
+        lexical retriever;
+  \item \textbf{Policies and gating} --- the policy abstraction and (in later
+        sprints) the gate ensemble;
+  \item \textbf{Evaluation} --- the profiler, the answer scorers and the
+        resumable run driver.
+\end{enumerate}
+
+A consequence of this structure is that the test suite never requires the
+multi-gigabyte language model: a \texttt{MockLLMBackend} that returns
+deterministic text and synthetic logit arrays substitutes for the real model,
+so the full suite of 61 unit tests executes in approximately half a second on
+commodity hardware. This is what makes the project's verification claims
+(Rubric: \emph{testing/verification}) credible and repeatable.
+
+% ---------------------------------------------------------------------
+\subsection{Configuration System}
+\label{sec:impl-config}
+
+Every experiment in this study is a point in a three-dimensional space:
+hardware tier $\times$ retrieval policy $\times$ dataset. Hard-coding these
+combinations would produce a combinatorial explosion of near-duplicate
+scripts and would make reproducibility claims fragile. Instead, configuration
+is expressed as four YAML files that are \emph{deep-merged} in increasing
+order of precedence:
+\[
+  \texttt{base} \;\rightarrow\; \texttt{hardware} \;\rightarrow\;
+  \texttt{policy} \;\rightarrow\; \texttt{experiment},
+\]
+so that a later file overrides only the keys it specifies, inheriting all
+others. The merged dictionary is then validated into a \texttt{ProjectConfig}
+Pydantic model, which rejects missing or mistyped fields \emph{before} any
+expensive computation begins --- a property that matters when a single
+experiment run can occupy several hours of CPU time.
+
+A representative design decision encoded in the configuration is the
+\texttt{logits\_all} flag. The entropy and margin gates require the model's
+full per-token logit distribution, which the inference library only retains
+when constructed with \texttt{logits\_all=True}, at a cost of roughly
+256\,MB of additional memory. On the low hardware tier (4\,GB), this flag is
+overridden to \texttt{false}, which automatically renders those two gates
+unavailable and forces the gate ensemble to fall back to the
+hallucination-probe gate alone. Encoding this trade-off declaratively in the
+hardware YAML --- rather than as a runtime conditional --- means the
+hardware-aware behaviour is auditable from configuration alone, supporting
+the \emph{Hardware-Aware Policy Escalation} contribution.
+
+To reconcile the terse shorthand used in experiment files (e.g.\ a bare
+\texttt{policy: p1\_always\_retrieve} string, or a flat
+\texttt{max\_questions} key) with the nested schema, a normalisation step
+remaps these convenience keys onto their canonical nested locations prior to
+validation. The configuration layer is covered by twelve unit tests
+exercising the merge semantics, every hardware and policy override, and the
+rejection of malformed input.
+
+% ---------------------------------------------------------------------
+\subsection{Data Contracts}
+\label{sec:impl-schema}
+
+All inter-layer communication passes through three dataclasses, isolated in a
+schema module with no project-internal imports so that it can be imported
+anywhere without risk of circular dependencies:
+
+\begin{itemize}
+  \item \texttt{UnifiedQuestion} --- a single medical question normalised from
+        any source dataset. Multiple-choice questions carry a
+        \texttt{choices} mapping and a letter \texttt{correct\_answer};
+        open-ended questions carry \texttt{choices = None} and a gold answer
+        string. Each question also carries a \texttt{risk\_level} assigned by
+        the risk tagger.
+  \item \texttt{PolicyResult} --- the output of running one policy on one
+        question: the answer text, the gate decision and signal value (where
+        applicable), the retrieved chunks, and profiling fields populated by
+        the profiler wrapper.
+  \item \texttt{RunRecord} --- a \texttt{PolicyResult} augmented with
+        ground-truth scoring and experiment metadata, serialised to JSON Lines
+        (JSONL) as one self-describing record per query.
+\end{itemize}
+
+The choice of an append-only JSONL audit log is central to the project's
+reproducibility and resumability story. Because each line is an independent
+record, an interrupted run can be resumed by reading back the set of
+\texttt{question\_id}s already present in the output file and skipping them ---
+essential when full experiments run for hours and may be interrupted. The
+\texttt{RunRecord} additionally carries a free-form \texttt{qvault} dictionary
+into which gate-specific payloads (per-token entropy arrays, the two probe
+drafts, per-member votes) are written without requiring new typed columns,
+keeping the schema stable as new gates are added.
+
+% ---------------------------------------------------------------------
+\subsection{Data Ingestion and Clinical-Risk Tagging}
+\label{sec:impl-data}
+
+Two dataset loaders were implemented for the primary benchmarks. The MIRAGE
+loader parses the MedRAG benchmark file, which is keyed by subset
+(\texttt{mmlu}, \texttt{medqa}, \texttt{medmcqa}, \texttt{pubmedqa},
+\texttt{bioasq}), and emits multiple-choice \texttt{UnifiedQuestion} objects;
+it tolerates both the nested subset-keyed format and a flat pre-extracted
+single subset. The RAGCare-QA loader handles open-ended questions and resolves
+field names flexibly (e.g.\ \texttt{question}/\texttt{query}/\texttt{input}
+for the prompt), so that a HuggingFace export loads without manual remapping.
+Isolating each dataset's idiosyncrasies inside its loader means that every
+downstream component operates on \texttt{UnifiedQuestion} alone and is
+agnostic to which dataset is running.
+
+The clinical-risk tagger assigns each question a level in
+$\{\texttt{low},\texttt{medium},\texttt{high}\}$ using a transparent,
+training-free keyword heuristic with the precedence
+$\textsc{high} \succ \textsc{low} \succ \textsc{medium}$ and a conservative
+default of \textsc{medium}. \textsc{high}-risk cues include dosing, overdose,
+drug interactions, contraindications and acute emergencies --- categories in
+which an incorrect answer could directly harm a patient. The decision to use
+an auditable rule set rather than a learned classifier is deliberate: in a
+clinical-safety context the basis for each risk assignment must be inspectable
+and defensible in the written report, and a learned classifier would both
+obscure that basis and require labelled training data that does not exist for
+this purpose. The tagger's limitations (notably, recall gaps on
+implicitly high-risk questions) are acknowledged as a documented finding
+rather than hidden. The \texttt{risk\_level} produced here is the axis along
+which the \emph{Safety Envelope} analysis is later computed.
+
+% ---------------------------------------------------------------------
+\subsection{Local Model Backend and Lexical Retrieval}
+\label{sec:impl-model-retrieval}
+
+The language model is served entirely on CPU through a \texttt{LlamaBackend}
+wrapping a 4-bit quantised Llama-3.2-3B model in GGUF format. Beyond ordinary
+generation, the backend exposes two specialised methods that exist solely to
+feed the retrieval gates:
+
+\begin{itemize}
+  \item \texttt{draft()} returns both the generated text \emph{and} the raw
+        logit array of shape $[\,n_{\text{gen}} \times |V|\,]$, the direct
+        input to the entropy gate;
+  \item \texttt{get\_top2\_logprobs()} returns the top-two token
+        log-probabilities per generated position, the input to the margin
+        gate. Critically, this method relies on the completion API's
+        \texttt{logprobs} output rather than the raw logit buffer, so it
+        continues to function when \texttt{logits\_all=false} on the low tier.
+\end{itemize}
+
+During this sprint, \texttt{get\_top2\_logprobs()} was promoted to an abstract
+method on the \texttt{LLMBackend} interface. This is a small but consequential
+design choice: by placing the method on the abstraction, the forthcoming
+margin gate can be written against the interface type alone, and the
+\texttt{MockLLMBackend} can supply synthetic top-two log-probabilities, so the
+gate is fully unit-testable without the real model. Determinism is guaranteed
+by constructing the model with \texttt{temperature\,$=$\,0} (greedy decoding)
+and a fixed seed; the configuration validator emits a warning if a non-zero
+temperature is ever supplied, since this would silently break reproducibility.
+
+Lexical retrieval is provided by a BM25 retriever over a corpus of
+\texttt{Chunk} objects. BM25 was selected as the first retriever for two
+reasons. First, it is the only retriever viable on the low hardware tier,
+since it requires no embedding model, no vector index and no GPU. Second,
+medical terminology is highly specific, so lexical overlap is a strong signal
+over corpora such as StatPearls and medical textbooks. The retriever provides
+an in-memory constructor for tests and small corpora, and a pickle-loading
+constructor for the full pre-built index, and returns the top-$k$ chunks with
+their BM25 scores attached. It is the lexical leg of the hybrid retriever to
+be built in the next sprint, and the sole retriever used by the gated policy's
+first prototype.
+
+% ---------------------------------------------------------------------
+\subsection{Baseline Policies}
+\label{sec:impl-policies}
+
+All policies implement a single abstract method,
+\texttt{answer(question) -> PolicyResult}, and are constructed with the three
+collaborators they may use: an LLM backend (always), a retriever (for
+retrieving policies) and a gate (for the gated policy only). This uniformity
+is what makes the comparative experiment tractable: the run driver invokes
+\texttt{policy.answer(q)} identically for every policy, with no knowledge of
+which policy it holds.
+
+Two baseline policies were implemented and define the two ends of the
+accuracy/cost spectrum against which the gated policy is later judged:
+
+\begin{itemize}
+  \item \textbf{P3 (Closed-Book)} answers purely from the model's parametric
+        knowledge with no retrieval. It is the speed and energy \emph{floor}
+        --- the cheapest possible policy --- and quantifies how far
+        parametric-only accuracy falls short of retrieval-augmented accuracy.
+  \item \textbf{P1 (Always-Retrieve)} retrieves evidence for every query and
+        answers with it in context. It is the accuracy \emph{ceiling}: the
+        gated policy aims to recover most of P1's accuracy while retrieving on
+        a fraction of queries.
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\subsection{Profiling and Scoring}
+\label{sec:impl-eval}
+
+The profiler wraps any callable and returns the result alongside latency
+(via a monotonic high-resolution nanosecond counter), peak memory (via
+\texttt{tracemalloc}) and, optionally, energy. Energy measurement through
+\texttt{codecarbon} is disabled by default and imported lazily, so that the
+test suite never incurs that dependency; on real runs it is enabled and
+reported in kWh. Measurement is strictly sequential: concurrent queries would
+corrupt the process-level energy readings, so no parallelism is permitted in
+the run loop. This is a methodological constraint imposed by the energy
+metric, not an implementation limitation.
+
+Two scorers match the two question types. The multiple-choice scorer extracts
+the predicted option letter from free-form model text using a cascade of
+regular expressions that handle leading letters, ``the answer is X'' phrasings
+and bare capitals, then compares to the gold letter. The open-ended scorer
+computes a SQuAD-style token-level $F_1$ between prediction and gold. The
+token-$F_1$ function is deliberately located in the scoring module rather than
+the metrics module, because the hallucination-probe gate reuses it to measure
+agreement between its two drafts --- an early example of the design
+anticipating the needs of the core-novelty layer.
+
+% ---------------------------------------------------------------------
+\subsection{First End-to-End Result: Closed-Book Baseline}
+\label{sec:impl-result}
+
+The sprint concluded by running the closed-book policy (P3) on the local
+Llama-3.2-3B model over 200 MIRAGE questions, with full per-query profiling
+and JSONL logging. This is the project's first real measurement and serves as
+the parametric-knowledge floor for all subsequent comparisons.
+Table~\ref{tab:p3-baseline} summarises the aggregate result, and
+Table~\ref{tab:p3-byrisk} breaks accuracy down by the clinical-risk level
+assigned by the tagger.
+
+\begin{table}[ht]
+  \centering
+  \caption{Closed-book baseline (P3) on 200 MIRAGE questions, Llama-3.2-3B
+           Q4\_K\_M, medium tier, greedy decoding, seed~42.}
+  \label{tab:p3-baseline}
+  \begin{tabular}{lr}
+    \toprule
+    \textbf{Metric} & \textbf{Value} \\
+    \midrule
+    Questions evaluated            & 200 \\
+    Accuracy (exact letter match)  & 62.0\% \\
+    Retrieval rate                 & 0\% (closed-book) \\
+    Latency, median (p50)          & 7.42\,s \\
+    Latency, 95th percentile (p95) & 9.25\,s \\
+    Mean energy per query          & $6.77\times10^{-4}$\,kWh \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[ht]
+  \centering
+  \caption{P3 closed-book accuracy by clinical-risk level (tagger-assigned).
+           Note the small $n$ in the high-risk stratum: this 200-question
+           pilot is dominated by medium-risk items, and a balanced
+           risk-stratified evaluation is scheduled for the full experiments.}
+  \label{tab:p3-byrisk}
+  \begin{tabular}{lrr}
+    \toprule
+    \textbf{Risk level} & \textbf{$n$} & \textbf{Accuracy} \\
+    \midrule
+    Low    & 28  & 64.3\% \\
+    Medium & 166 & 60.8\% \\
+    High   & 6   & 83.3\% \\
+    \midrule
+    All    & 200 & 62.0\% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Two observations frame the later evaluation. First, a 62.0\% closed-book
+accuracy establishes that the quantised 3B model retains substantial medical
+knowledge parametrically, which makes the central research question --- when
+retrieval can be \emph{safely skipped} --- empirically meaningful rather than
+rhetorical: if closed-book accuracy were near chance, gating would be
+pointless. Second, the per-query latency of roughly 7--9 seconds on CPU
+quantifies the cost the gating mechanism must justify: every avoided retrieval
+saves both the retrieval cost and the larger-context generation cost, and the
+energy figure provides the per-query baseline against which the gate's
+efficiency claims will be measured. The skew of the risk distribution in this
+pilot (only six high-risk items) is itself a finding that motivates the
+risk-stratified sampling planned for the full experiments.
+
+% ---------------------------------------------------------------------
+\subsection{Verification Status}
+\label{sec:impl-verification}
+
+At the close of the sprint, the foundation layer is covered by 61 unit tests,
+all passing, executing in approximately 0.5\,s without any model or dataset
+download by virtue of the mock backend. Coverage spans: configuration
+deep-merge and override semantics (12 tests); BM25 ranking and index
+round-trip (5); dataset loading and risk tagging (12); baseline policy
+behaviour (3); profiler latency/memory/energy gating (6); answer scoring
+across letter formats and token-$F_1$ (10); and the resumable run driver's
+write-then-skip logic (2). This test-first foundation is the substrate into
+which the retrieval gates --- the project's core novel contribution --- are
+inserted in the following sprint.
