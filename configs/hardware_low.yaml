@@ -11,7 +11,9 @@ model:
   gguf_path: models/llama-3.2-1b-q4_k_m.gguf
   n_ctx: 1024
   # Disable logits_all on low tier to save ~256 MB RAM.
-  # This means entropy + margin gates are unavailable; only verbalized gate works.
+  # This means entropy + margin gates are unavailable (they need raw logits);
+  # only the hallucination-probe gate works, since it uses answer()/draft() text
+  # rather than the _scores logit buffer. P5 falls back to probe-only here.
   logits_all: false
   max_new_tokens: 128
 
@@ -23,4 +25,6 @@ retrieval:
     - statpearls        # textbooks omitted to reduce index RAM footprint
 
 gate:
-  type: verbalized      # only gate available when logits_all=false
+  # Only the hallucination-probe gate works when logits_all=false (entropy and
+  # margin need raw logits). P5 on the low tier is probe-only.
+  type: hallucination_probe

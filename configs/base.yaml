@@ -61,18 +61,27 @@ retrieval:
 
 # ── Gate defaults (P5 only) ───────────────────────────────────────
 gate:
-  type: entropy                 # entropy | margin | verbalized
+  # entropy | margin | hallucination_probe | ensemble | verbalized(deprecated)
+  type: ensemble
   # Entropy gate: retrieve if mean token entropy (nats) > threshold
   entropy_threshold: 2.5
   # Margin gate: retrieve if mean(p_top1 - p_top2) < threshold
   margin_threshold: 0.3
   # Number of draft tokens to generate before computing gate signal
   draft_max_tokens: 48
-  # Verbalized gate: which model responses trigger retrieval
+  # Ensemble: majority vote across these single gates; retrieve if >= min_votes
+  ensemble_members: [entropy, margin, hallucination_probe]
+  ensemble_min_votes: 2
+  # Hallucination probe: two drafts with different framings; disagree -> retrieve
+  hallucination_probe:
+    enabled: true
+    agreement_mode: letter_match   # letter_match (MCQ) | f1_threshold (open-ended)
+    f1_threshold: 0.7
+    max_tokens: 48
+  # Deprecated verbalized-confidence gate (kept for ablation only)
   verbalized_labels:
     retrieve: [MEDIUM, LOW]
     skip: [HIGH]
-  # Max tokens for the confidence-assessment call (keep short)
   verbalized_max_tokens: 10
 
 # ── Evaluation ────────────────────────────────────────────────────
