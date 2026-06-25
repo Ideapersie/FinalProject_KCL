@@ -107,6 +107,8 @@ def build_rag_prompt(
 
 # ─────────────────────────────────────────────────────────────────
 # P5 — Gate: verbalized confidence check
+# DEPRECATED: replaced by the hallucination-probe gate (build_probe_prompt_a/b).
+# Retained only for the ablation study comparing probe vs verbalized.
 # ─────────────────────────────────────────────────────────────────
 
 VERBALIZED_CONFIDENCE_TEMPLATE = """\
@@ -143,4 +145,48 @@ def build_draft_prompt(
     return DRAFT_TEMPLATE.format(
         question=question,
         choices=_format_choices(choices),
+    )
+
+
+# ─────────────────────────────────────────────────────────────────
+# P5 — Gate: hallucination probe (two framings of the same question)
+# ─────────────────────────────────────────────────────────────────
+# The probe gate generates two short drafts under different framings. If the
+# extracted answers disagree, the model is unstable on this query → retrieve.
+# Reuses the standard draft/answer machinery; no special confidence prompt.
+
+HALLUCINATION_PROBE_A = """\
+[INST] You are a medical assistant. Answer the following medical question briefly.
+
+Question: {question}
+{choices}
+{instruction} [/INST]"""
+
+HALLUCINATION_PROBE_B = """\
+[INST] What is the correct answer to the following medical question? Be concise.
+
+{question}
+{choices}
+{instruction} [/INST]"""
+
+
+def build_probe_prompt_a(
+    question: str,
+    choices: Optional[Dict[str, str]] = None,
+) -> str:
+    return HALLUCINATION_PROBE_A.format(
+        question=question,
+        choices=_format_choices(choices),
+        instruction=_mcq_instruction(choices is not None),
+    )
+
+
+def build_probe_prompt_b(
+    question: str,
+    choices: Optional[Dict[str, str]] = None,
+) -> str:
+    return HALLUCINATION_PROBE_B.format(
+        question=question,
+        choices=_format_choices(choices),
+        instruction=_mcq_instruction(choices is not None),
     )
