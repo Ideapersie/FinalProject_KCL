@@ -1,0 +1,21 @@
+{
+  "mmlu": {
+    "mmlu_0": {
+      "question": "Which nerve innervates the diaphragm?",
+      "options": {"A": "Vagus nerve", "B": "Phrenic nerve", "C": "Intercostal nerves", "D": "Sympathetic trunk"},
+      "answer": "B"
+    },
+    "mmlu_1": {
+      "question": "What is the first-line management of newly diagnosed type 2 diabetes?",
+      "options": {"A": "Insulin", "B": "Metformin", "C": "Sulfonylurea", "D": "Diet only"},
+      "answer": "B"
+    }
+  },
+  "medqa": {
+    "medqa_0": {
+      "question": "A patient on warfarin is started on ciprofloxacin. What is the main interaction risk?",
+      "options": {"A": "Reduced INR", "B": "No interaction", "C": "Increased bleeding risk", "D": "Renal failure"},
+      "answer": "C"
+    }
+  }
+}
