@@ -42,25 +42,44 @@ def _load_chunks(corpus_path: str | Path) -> List[Chunk]:
     return chunks
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser(description="Build BM25 index from a chunk corpus.")
-    ap.add_argument("--corpus", required=True, help="JSONL corpus of chunks")
-    ap.add_argument("--bm25-out", default="indexes/bm25_pilot.pkl")
-    ap.add_argument("--force", action="store_true")
-    args = ap.parse_args()
-
-    out = Path(args.bm25_out)
-    if out.exists() and not args.force:
+def _build_bm25(chunks, out: Path, force: bool) -> None:
+    if out.exists() and not force:
         print(f"[skip] BM25 index already at {out} (use --force to rebuild)")
         return
+    BM25Retriever.from_chunks(chunks).save(out)
+    print(f"[ok  ] BM25 index built from {len(chunks)} chunks -> {out}")
+
+
+def _build_faiss(chunks, out_dir: Path, model_name: str, force: bool) -> None:
+    if (out_dir / "faiss.index").exists() and not force:
+        print(f"[skip] FAISS index already at {out_dir} (use --force to rebuild)")
+        return
+    # Imported here so the BM25-only path never needs FAISS / sentence-transformers.
+    from medrag_adaptive.retrieval.vector_retriever import VectorRetriever
+    VectorRetriever.from_chunks(chunks, model_name=model_name).save(out_dir)
+    print(f"[ok  ] FAISS index built from {len(chunks)} chunks -> {out_dir}")
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description="Build BM25 and/or FAISS index from a corpus.")
+    ap.add_argument("--corpus", required=True, help="JSONL corpus of chunks")
+    ap.add_argument("--bm25-out", default="indexes/bm25_pilot.pkl")
+    ap.add_argument("--faiss-out", default="indexes/faiss_pilot",
+                    help="directory for the FAISS index + chunk metadata")
+    ap.add_argument("--which", choices=["bm25", "faiss", "both"], default="both")
+    ap.add_argument("--embedding-model",
+                    default="sentence-transformers/all-MiniLM-L6-v2")
+    ap.add_argument("--force", action="store_true")
+    args = ap.parse_args()
 
     chunks = _load_chunks(args.corpus)
     if not chunks:
         raise SystemExit(f"No chunks loaded from {args.corpus}")
 
-    retriever = BM25Retriever.from_chunks(chunks)
-    retriever.save(out)
-    print(f"[ok  ] BM25 index built from {len(chunks)} chunks -> {out}")
+    if args.which in ("bm25", "both"):
+        _build_bm25(chunks, Path(args.bm25_out), args.force)
+    if args.which in ("faiss", "both"):
+        _build_faiss(chunks, Path(args.faiss_out), args.embedding_model, args.force)
 
 
 if __name__ == "__main__":

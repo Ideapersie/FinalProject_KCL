@@ -147,6 +147,10 @@ def main() -> None:
     ap.add_argument("--experiment", default=None)
     ap.add_argument("--dataset", required=True, help="path to benchmark file")
     ap.add_argument("--bm25-index", default=None, help="BM25 pickle for retrieval policies")
+    ap.add_argument("--faiss-index", default=None, help="FAISS index dir for vector/hybrid")
+    ap.add_argument("--retrieval-mode", default=None,
+                    choices=["none", "bm25", "vector", "hybrid"],
+                    help="override cfg.policy.retrieval_mode")
     ap.add_argument("--model", default=None, help="override gguf_path from config")
     ap.add_argument("--max-questions", type=int, default=None)
     ap.add_argument("--output", required=True)
@@ -162,7 +166,17 @@ def main() -> None:
         cfg.model.gguf_path = args.model
 
     from medrag_adaptive.models.llama_backend import llama_backend_from_config
-    retriever = BM25Retriever.from_index(args.bm25_index) if args.bm25_index else None
+    from medrag_adaptive.retrieval.factory import build_retriever
+
+    if args.retrieval_mode is not None:
+        cfg.policy.retrieval_mode = args.retrieval_mode
+    # Closed-book policies need no retriever; otherwise build per retrieval_mode.
+    if cfg.policy.name == "p3_closed_book":
+        retriever = None
+    else:
+        retriever = build_retriever(
+            cfg, bm25_index=args.bm25_index, faiss_index=args.faiss_index
+        )
 
     with llama_backend_from_config(cfg) as llm:
         n = run(cfg, args.dataset, args.output, llm, retriever)

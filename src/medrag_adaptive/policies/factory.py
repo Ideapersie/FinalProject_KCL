@@ -29,7 +29,9 @@ from medrag_adaptive.gating.ensemble_gate import EnsembleGate
 from medrag_adaptive.models.base import LLMBackend
 from medrag_adaptive.policies.base import Policy
 from medrag_adaptive.policies.p1_always_retrieve import AlwaysRetrievePolicy
+from medrag_adaptive.policies.p2_always_retrieve_cite import AlwaysRetrieveCitePolicy
 from medrag_adaptive.policies.p3_closed_book import ClosedBookPolicy
+from medrag_adaptive.policies.p4_hybrid import HybridRetrievalPolicy
 from medrag_adaptive.policies.p5_gated import GatedPolicy
 from medrag_adaptive.retrieval.base import Retriever
 
@@ -86,10 +88,24 @@ def build_policy(
     if name == "p3_closed_book":
         return ClosedBookPolicy(llm=llm)
 
-    if name in ("p1_always_retrieve", "p2_always_retrieve_cite"):
+    if name == "p1_always_retrieve":
         if retriever is None:
             raise ValueError(f"{name} requires a retriever")
         return AlwaysRetrievePolicy(
+            llm=llm, retriever=retriever, cite_sources=cfg.policy.cite_sources
+        )
+
+    if name == "p2_always_retrieve_cite":
+        if retriever is None:
+            raise ValueError(f"{name} requires a retriever")
+        return AlwaysRetrieveCitePolicy(
+            llm=llm, retriever=retriever, cite_sources=True
+        )
+
+    if name == "p4_hybrid":
+        if retriever is None:
+            raise ValueError(f"{name} requires a retriever")
+        return HybridRetrievalPolicy(
             llm=llm, retriever=retriever, cite_sources=cfg.policy.cite_sources
         )
 
