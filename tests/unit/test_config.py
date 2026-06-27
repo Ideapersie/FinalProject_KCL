@@ -111,13 +111,16 @@ class TestLoadConfig:
         assert cfg.policy.name == "p3_closed_book"
         assert cfg.policy.retrieval_mode == "none"
 
-    def test_p5_gated_entropy_policy(self) -> None:
+    def test_p5_gated_policy(self) -> None:
         cfg = load_config(
             base="configs/base.yaml",
             policy="configs/policies/p5_gated_entropy.yaml",
         )
         assert cfg.policy.name == "p5_gated"
-        assert cfg.gate.type == "entropy"
+        # Canonical P5 now runs the 3-gate ensemble (entropy + margin + probe).
+        assert cfg.gate.type == "ensemble"
+        assert cfg.gate.ensemble_min_votes == 2
+        assert "hallucination_probe" in cfg.gate.ensemble_members
         assert cfg.gate.entropy_threshold == pytest.approx(2.5)
 
     def test_missing_base_raises(self) -> None:

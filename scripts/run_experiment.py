@@ -37,8 +37,7 @@ from medrag_adaptive.evaluation.profiler import profile_call
 from medrag_adaptive.evaluation.scoring import score_mcq, token_f1
 from medrag_adaptive.models.base import LLMBackend
 from medrag_adaptive.policies.base import Policy
-from medrag_adaptive.policies.p1_always_retrieve import AlwaysRetrievePolicy
-from medrag_adaptive.policies.p3_closed_book import ClosedBookPolicy
+from medrag_adaptive.policies.factory import build_policy
 from medrag_adaptive.retrieval.base import Retriever
 from medrag_adaptive.retrieval.bm25_retriever import BM25Retriever
 
@@ -56,23 +55,9 @@ def load_questions(dataset_path: str, cfg: ProjectConfig) -> List[UnifiedQuestio
     raise ValueError(f"Unknown dataset '{cfg.dataset}'")
 
 
-# ── policy wiring (Week 1: direct; Week 2: PolicyFactory) ───────────
-
-def build_policy(
-    cfg: ProjectConfig,
-    llm: LLMBackend,
-    retriever: Optional[Retriever],
-) -> Policy:
-    name = cfg.policy.name
-    if name == "p3_closed_book":
-        return ClosedBookPolicy(llm=llm)
-    if name in ("p1_always_retrieve", "p2_always_retrieve_cite"):
-        if retriever is None:
-            raise ValueError(f"{name} requires a retriever (pass --bm25-index)")
-        return AlwaysRetrievePolicy(
-            llm=llm, retriever=retriever, cite_sources=cfg.policy.cite_sources
-        )
-    raise ValueError(f"Policy '{name}' not wired in Week 1 runner (use factory)")
+# ── policy wiring: delegated to policies.factory.build_policy ───────
+# (The factory picks the policy class and assembles the P5 gate ensemble,
+#  downgrading to probe-only when the hardware tier disables logits.)
 
 
 # ── scoring + record assembly ──────────────────────────────────────
@@ -89,6 +74,10 @@ def score_and_record(question, result, cfg) -> RunRecord:
     qvault = {}
     if result.gate_signal_value is not None:
         qvault["gate_signal_value"] = result.gate_signal_value
+    # Full gate decision payload (per-token entropy, member votes, probe drafts)
+    # for auditability and the interpretability visualisations.
+    if result.gate_details:
+        qvault["gate_details"] = result.gate_details
 
     return RunRecord(
         question_id=question.question_id,

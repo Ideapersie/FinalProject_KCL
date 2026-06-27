@@ -98,6 +98,7 @@ class PolicyResult:
     gate_name:          Optional[str]   = None   # "entropy" | "margin" | "verbalized" | None
     gate_decision:      Optional[str]   = None   # "retrieve" | "skip" | None
     gate_signal_value:  Optional[float] = None   # raw entropy or margin value
+    gate_details:       Dict[str, Any]  = field(default_factory=dict)  # -> RunRecord.qvault
     retrieval_triggered: bool           = False
     retrieved_chunks:   List[Chunk]     = field(default_factory=list)
     answer_text:        str             = ""
