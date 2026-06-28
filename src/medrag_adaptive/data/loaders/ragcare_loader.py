@@ -20,7 +20,7 @@ from medrag_adaptive.data.loaders.base import cap, read_json, read_jsonl, tag_ri
 from medrag_adaptive.data.schema import UnifiedQuestion
 
 _QUESTION_KEYS = ("question", "query", "input", "prompt")
-_ANSWER_KEYS = ("answer", "gold", "output", "response", "target")
+_ANSWER_KEYS = ("answer", "gold", "output", "response", "target", "long_answer")
 _ID_KEYS = ("id", "qid", "question_id", "_id")
 _SPECIALTY_KEYS = ("specialty", "category", "topic", "domain")
 
