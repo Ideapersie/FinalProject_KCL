@@ -125,16 +125,66 @@ FinalProject_KCL/
 
 ## Sprint Roadmap
 
-| Sprint | Weeks | Focus | Milestone |
-|--------|-------|-------|-----------|
-| **1** | 1–2 | Foundation: scaffold, config, schema, LLM backend | Single closed-book inference on CPU |
-| **2** | 3–4 | Baseline policies (P1, P3) + data pipeline + profiler | P1+P3 on 100 MIRAGE Qs with full logging |
-| **3** | 5–6 | Retrieval engine (BM25, FAISS, RRF) + P2, P4 | All 4 non-gated policies runnable |
-| **4** | 7–8 | **Core novelty**: 3 gating mechanisms + P5 + calibration | Gate reduces retrieval 40–70% on 500-Q subset |
-| **5** | 9–10 | Full experiments: all 6 policies × 3 tiers × 3 datasets + P6 | All results JSONL files produced |
-| **6** | 11–12 | Analysis, Pareto curves, safety envelopes, user study | All figures + tables ready |
-| **7** | 13–14 | Report writing + reproducibility packaging | First complete draft |
-| **8** | 15–16 | Polish, presentation, submission | Submitted |
+Status: ✅ done · 🟡 in progress · ⬜ not started
+
+| Sprint | Weeks | Focus | Milestone | Status |
+|--------|-------|-------|-----------|--------|
+| **1** | 1–2 | Foundation: scaffold, config, schema, LLM backend | Single closed-book inference on CPU | ✅ |
+| **2** | 3–4 | Baseline policies (P1, P3) + data pipeline + profiler | P1+P3 on 100 MIRAGE Qs with full logging | ✅ |
+| **3** | 5–6 | Retrieval engine (BM25, FAISS, RRF) + P2, P4 | All 4 non-gated policies runnable | 🟡 |
+| **4** | 7–8 | **Core novelty**: 3 gating mechanisms + P5 + calibration | Gate reduces retrieval 40–70% on 500-Q subset | 🟡 |
+| **5** | 9–10 | Full experiments: all 6 policies × 3 tiers × 3 datasets + P6 | All results JSONL files produced | ⬜ |
+| **6** | 11–12 | Analysis, Pareto curves, safety envelopes, user study | All figures + tables ready | ⬜ |
+| **7** | 13–14 | Report writing + reproducibility packaging | First complete draft | ⬜ |
+| **8** | 15–16 | Polish, presentation, submission | Submitted | ⬜ |
+
+---
+
+## Progress Snapshot (as of 2026-06-26)
+
+**Sprint 1 — Foundation ✅ complete**
+- config (Pydantic deep-merge), schema (`UnifiedQuestion`/`PolicyResult`/`RunRecord` + JSONL),
+  `LlamaBackend` (logits + top-2 logprobs), prompts, profiler, scoring.
+- 86/86 unit tests passing, run without any model download.
+
+**Sprint 2 — Baselines + data pipeline ✅ complete**
+- Loaders: `mirage_loader`, `ragcare_loader`, `risk_tagger`.
+- Policies: `base`, P1 (`p1_always_retrieve`), P3 (`p3_closed_book`).
+- `run_experiment.py` driver: sequential, resumable, profiled.
+- **Real result:** P3 closed-book = **62.0% on 200 MIRAGE Qs** (p50 7.42s, p95 9.25s).
+  Logged to `results/raw_logs/p3_mirage200.jsonl`.
+
+**Sprint 3 — Retrieval engine 🟡 partial**
+- ✅ `retrieval/base.py`, `bm25_retriever.py`, `scripts/build_indexes.py` (BM25 leg).
+- ✅ Pilot corpus (`build_pilot_corpus.py`, 200 chunks) for the prototype RETRIEVE path.
+- ⬜ `vector_retriever.py` (FAISS), `hybrid_retriever.py` (RRF), real MedCorp/StatPearls corpus.
+- ⬜ P2 (`p2_always_retrieve_cite`), P4 (`p4_hybrid`).
+
+**Sprint 4 — Core novelty (gating + P5) 🟡 prototype built, calibration pending**
+- ✅ Gates: `entropy_gate` (+ per-token attribution), `margin_gate` (parser validated vs real
+  llama-cpp), `hallucination_probe_gate`, `ensemble_gate` (majority vote + degraded mode).
+- ✅ `policies/p5_gated.py`, `policies/factory.py` (hardware-aware gate downgrade on low tier).
+- ✅ Runner wired to factory; full `gate_details` logged to `RunRecord.qvault`.
+- ✅ **P5 run complete on 200 MIRAGE Qs** → `results/raw_logs/p5_mirage200.jsonl`.
+  - **Key finding:** at default thresholds (τ_H=2.5, τ_M=0.3) gate retrieved on
+    **0/200** → P5 == P3 (62.0% acc). Entropy signals 0.27–1.59 (never >2.5),
+    margin 0.45–0.89 (never <0.3) on quantised 3B; only the probe voted retrieve
+    (80/200), outvoted under the 2-of-3 majority. **Thresholds don't transfer —
+    calibration needed** (risk register item confirmed empirically).
+  - Latency p50 143.7s (vs P3 7.42s) — cost of 3 gating drafts/query on CPU.
+- ⬜ **Threshold calibration sweep** (Sprint 4 priority): suggested operating
+  points ≈ entropy p75 (~0.9 nats), margin p25 (~0.64). Then re-run P5.
+- ⬜ Ablation (each gate solo vs ensemble); verbalized kept for ablation only.
+
+**Sprints 5–8 ⬜ not started**
+- `evaluation/harness.py` (formal class), `metrics.py` (ECE, citation P/R),
+  `safety_envelope.py`, `results.py`, `attention_entropy.py`, `ui/gradio_app.py`,
+  `generate_figures.py`, P6, P7, report chapters.
+
+**Note:** the live design follows `CLAUDE_CODE_CONTEXT.md` v2 — 3-gate ensemble with
+hallucination probe replacing verbalized confidence, plus token-level entropy attribution.
+Report drafts: `report/week1_implementation.tex` (done), `report/week2_gating.tex`
+(methods done; prototype results table placeholder pending the P5 run).
 
 ---
 
