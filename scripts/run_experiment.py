@@ -67,8 +67,15 @@ def score_and_record(question, result, cfg) -> RunRecord:
         is_correct, em = score_mcq(result.answer_text, question.correct_answer)
         f1 = em
     else:
+        # Open-ended (paragraph) answers: token-F1 is the reported metric, not a
+        # binary accuracy. PubMedQA gold is a single terse abstract-conclusion
+        # sentence while the model writes a paragraph, so lexical overlap is low
+        # even when the answer is semantically right — any fixed F1 cutoff is
+        # arbitrary. We therefore report mean f1_score as the headline; is_correct
+        # is kept only as a soft "non-empty overlap" floor (F1 > 0) for auditing
+        # and is NOT to be aggregated as accuracy for open-ended runs.
         f1 = token_f1(result.answer_text, question.correct_answer)
-        is_correct = f1 >= 0.5
+        is_correct = f1 > 0.0
         em = 1.0 if f1 == 1.0 else 0.0
 
     qvault = {}
