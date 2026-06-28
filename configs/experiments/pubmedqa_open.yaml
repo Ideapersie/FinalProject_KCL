@@ -1,0 +1,16 @@
+# pubmedqa_open.yaml — Phase 3 open-ended (paragraph) Q&A benchmark.
+#
+# PubMedQA (pqa_labeled) substitutes for the dead RAGCare-QA path. 1,000 expert
+# research questions, each with a paragraph `long_answer`. This is the project's
+# first genuine free-text evaluation: scoring is token-F1 (not letter match) and
+# the P5 hallucination probe auto-switches to its f1_threshold agreement mode.
+#
+# The loader is selected by `dataset: ragcare` (the open-ended loader, which is
+# key-flexible and reads PubMedQA's question/long_answer fields). The actual file
+# path is passed on the command line via --dataset.
+
+name: pubmedqa_open
+dataset: ragcare
+max_questions: 200
+
+hardware_config: configs/hardware_medium.yaml
