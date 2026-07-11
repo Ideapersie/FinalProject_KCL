@@ -1,0 +1,122 @@
+% =====================================================================
+%  main.tex — Dissertation master file
+%  Adaptive Retrieval Gating for Safety-Aware Medical RAG
+%  Tharit Mohamed Hussain Khan (22058691) — KCL MSc AI — 7CCSMPRJ
+%
+%  Build:  pdflatex main  ->  bibtex main  ->  pdflatex main  ->  pdflatex main
+%  (or use latexmk -pdf main.tex)
+%
+%  Target length ~15,000 words. Chapters live in chapters/ and are pulled in
+%  with \input{}. The four existing "weekN" files are being re-threaded into
+%  the coherent chapters below (Methodology / Implementation / Evaluation) and
+%  should be dropped from the \input list once their content has migrated.
+% =====================================================================
+\documentclass[11pt,a4paper]{report}
+
+% ---- Core packages (superset of what every chapter fragment needs) ----
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}          % professional tables
+\usepackage{graphicx}          % figures
+\usepackage{xcolor}            % listing / highlight colours
+\usepackage{listings}          % code listings
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage[hidelinks]{hyperref}
+\usepackage{siunitx}
+\usepackage{enumitem}
+\usepackage[numbers]{natbib}    % \bibliographystyle{plainnat}
+
+% Chapters reference figures as "results/figures/fig_x" (repo-root relative),
+% so add the repo root. The bare figures dir is kept too for any short names.
+\graphicspath{{../}{../results/figures/}}   % figures generated from logs
+
+% ---- Shared listing style (chapters may redefine locally; harmless) ----
+\lstdefinestyle{pyqvault}{
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{blue!70!black}\bfseries,
+  commentstyle=\color{green!45!black}\itshape,
+  stringstyle=\color{red!60!black},
+  showstringspaces=false,
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{black!25},
+}
+\lstset{style=pyqvault}
+
+% ---- Metadata ----
+\title{Adaptive Retrieval Gating for Safety-Aware Medical RAG}
+\author{Tharit Mohamed Hussain Khan\\\small 22058691}
+\date{\today}
+
+% =====================================================================
+\begin{document}
+
+% ---------------- Front matter ----------------
+\pagenumbering{roman}
+\maketitle
+
+\begin{abstract}
+% ~250 words — write LAST (Block 8). Motivation (offline, safety, cost-aware
+% medical RAG); the training-free 3-gate ensemble; the central finding that
+% selective retrieval beats always-retrieve at half the retrieval cost; the
+% honest model-capability ceiling reframed as a quantified distance to clinical
+% safety.
+\emph{[Abstract — to be written in Block 8.]}
+\end{abstract}
+
+% \chapter*{Acknowledgements}  % optional, ~100 words
+% \input{chapters/acknowledgements}
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+% ---------------- Body ----------------
+\clearpage
+\pagenumbering{arabic}
+
+% Ch 1 — Introduction (~1,500 w) — NEW, Block 6
+% \input{chapters/introduction}
+
+% Ch 2 — Background & Related Work (~2,500 w) — NEW, Block 6
+% \input{chapters/background}
+
+% Ch 3 — Methodology / Design (~2,500 w) — from week2_gating, re-threaded, Block 4
+% \input{chapters/methodology}
+
+% Ch 4 — Implementation (~2,000 w) — from week1 + week3 build parts, Block 4
+% \input{chapters/implementation}
+
+% Ch 5 — Evaluation & Results (~3,000 w) — THE MARKS — Block 3
+%   sources: week3 results + week4_corpus_results + A2 ablation + A3 envelope
+%   + A4 entropy attribution + A5 risk-stratified CIs
+% \input{chapters/evaluation}
+
+% Ch 6 — Discussion (~1,500 w) — NEW, Block 7
+% \input{chapters/discussion}
+
+% Ch 7 — LSEP (~1,200 w) — NEW, Block 7
+% \input{chapters/lsep}
+
+% Ch 8 — Conclusion & Future Work (~900 w) — NEW, Block 8
+% \input{chapters/conclusion}
+
+% --- TEMPORARY: existing sprint-log chapters, kept until re-threaded above ---
+% Remove each \input below as its content migrates into Ch 3/4/5.
+\input{week1_implementation}
+\input{week2_gating}
+\input{week3_policies}
+\input{week4_corpus_results}
+
+% ---------------- Back matter ----------------
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+% \appendix
+% \input{chapters/appendix}
+
+\end{document}
