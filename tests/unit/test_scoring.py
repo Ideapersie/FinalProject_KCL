@@ -17,6 +17,12 @@ from medrag_adaptive.evaluation.scoring import (
     ("Answer: E", "E"),
     ("Phrenic nerve", None),
     ("", None),
+    # An explicit "the answer is X" must win over a leading letter that is
+    # merely an echo of the choice list. Observed in real logs: the model
+    # restates the options ("A. ... B. ...") then states its choice.
+    ("A. A B. C C. A D. B  The correct answer is B.", "B"),
+    # A reasoning/format preamble before the stated answer must not block it.
+    ("Note: I'll follow the format you requested. The answer is C.", "C"),
 ])
 def test_extract_letter(text, expected):
     assert extract_letter(text) == expected

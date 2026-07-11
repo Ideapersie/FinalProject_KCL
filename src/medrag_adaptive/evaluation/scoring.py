@@ -24,16 +24,24 @@ _LEAD_RE = re.compile(r"^\s*\(?([A-E])\)?[\.\):\s]")
 
 
 def extract_letter(text: str) -> Optional[str]:
-    """Extract the predicted MCQ option letter from free-text, or None."""
+    """Extract the predicted MCQ option letter from free-text, or None.
+
+    An explicit "the answer is X" / "Answer: X" phrase is the most reliable
+    signal and is checked FIRST, because a leading letter is often just an echo
+    of the choice list (observed in real logs: "A. ... B. ... The answer is B").
+    Only when no such phrase exists do we fall back to a leading option letter,
+    then to any standalone A–E.
+    """
     if not text:
         return None
-    lead = _LEAD_RE.match(text)
-    if lead:
-        return lead.group(1).upper()
-    # Common phrasings: "the answer is C", "Answer: C"
+    # Most reliable: an explicit answer statement, wherever it appears.
     m = re.search(r"answer\s*(?:is|:)?\s*\(?([A-E])\)?\b", text, re.IGNORECASE)
     if m:
         return m.group(1).upper()
+    # Next: a leading option letter ("A. Phrenic nerve", "(C)").
+    lead = _LEAD_RE.match(text)
+    if lead:
+        return lead.group(1).upper()
     # Fallback: first standalone capital letter A–E.
     m = _LETTER_RE.search(text.upper())
     return m.group(1) if m else None
