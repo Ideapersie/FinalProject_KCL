@@ -121,7 +121,11 @@ class TestLoadConfig:
         assert cfg.gate.type == "ensemble"
         assert cfg.gate.ensemble_min_votes == 2
         assert "hallucination_probe" in cfg.gate.ensemble_members
-        assert cfg.gate.entropy_threshold == pytest.approx(2.5)
+        # Thresholds are the calibrated operating point (τ_H = τ_M = 0.70), not
+        # the original literature defaults (2.5 / 0.3) which never fired on the
+        # quantised model — see the calibration finding.
+        assert cfg.gate.entropy_threshold == pytest.approx(0.70)
+        assert cfg.gate.margin_threshold == pytest.approx(0.70)
 
     def test_missing_base_raises(self) -> None:
         with pytest.raises(FileNotFoundError):
