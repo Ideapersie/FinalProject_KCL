@@ -212,3 +212,11 @@ indexes/
 data/raw/
 results/raw_logs/
 *.gguf
+data/corpora/
+mirage/
+
+# Crash dumps
+*.stackdump
+
+# Unrelated portfolio handoff
+design_handoff_portfolio/
