@@ -1,0 +1,12 @@
+# mirage_medcorp.yaml — clean MCQ experiment config for real-corpus re-runs.
+#
+# Unlike full_mirage.yaml (which pins policy: p5_gated and a gate block), this
+# sets ONLY the dataset and question count, so it can be paired with ANY policy
+# file (P1, P4, P5) without overriding the policy name or its gate. The policy is
+# chosen by --policy on the command line; retrieval mode by --retrieval-mode.
+
+name: mirage_medcorp
+dataset: mirage
+max_questions: 200
+
+hardware_config: configs/hardware_medium.yaml

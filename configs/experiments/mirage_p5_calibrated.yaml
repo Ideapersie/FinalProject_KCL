@@ -1,0 +1,13 @@
+# mirage_p5_calibrated.yaml — P5 MCQ re-run with CALIBRATED gate thresholds.
+#
+# Unlike full_mirage.yaml, this deliberately does NOT override the gate block, so
+# the calibrated ensemble thresholds from configs/policies/p5_gated_entropy.yaml
+# (τ_H=0.70, τ_M=0.70) are used as-is. full_mirage.yaml pins the old entropy-only
+# 2.5 threshold, which would revert P5 to 0% retrieval — exactly the bug this run
+# is meant to fix. Loader is selected by `dataset: mirage` (MCQ, letter scoring).
+
+name: mirage_p5_calibrated
+dataset: mirage
+max_questions: 200
+
+hardware_config: configs/hardware_medium.yaml
