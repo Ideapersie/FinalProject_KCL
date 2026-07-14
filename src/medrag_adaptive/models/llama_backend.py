@@ -67,6 +67,8 @@ class LlamaBackend(LLMBackend):
         max_new_tokens: int = 256,
         seed: int = 42,
         verbose: bool = False,
+        chat_format: str = "llama",
+        n_gpu_layers: int = 0,
     ) -> None:
         try:
             from llama_cpp import Llama
@@ -83,12 +85,23 @@ class LlamaBackend(LLMBackend):
         self._temperature = temperature
         self._logits_all = logits_all
 
+        # Select the chat markup this model was tuned on, for every prompt built
+        # from here on. Doing it at backend construction means a policy or gate
+        # can never accidentally build a prompt in another model's format.
+        from medrag_adaptive.models.prompts import set_chat_format
+        set_chat_format(chat_format)
+
         self._llm = Llama(
             model_path=gguf_path,
             n_ctx=n_ctx,
             n_threads=n_threads,
             n_batch=n_batch,
             logits_all=logits_all,
+            # 0 = CPU only (default). -1 = offload every layer to the GPU, used
+            # for the cloud scaling runs. Under CUDA llama-cpp still exposes
+            # `_scores` and `logprobs=2`, so the entropy and margin gates keep
+            # working — the reason this project stays on llama-cpp.
+            n_gpu_layers=n_gpu_layers,
             seed=seed,
             verbose=verbose,
         )
@@ -226,6 +239,8 @@ def llama_backend_from_config(config: "ProjectConfig") -> LlamaBackend:  # type:
         max_new_tokens=m.max_new_tokens,
         seed=config.seed,
         verbose=m.verbose,
+        chat_format=m.chat_format,
+        n_gpu_layers=m.n_gpu_layers,
     )
 
 
