@@ -34,6 +34,16 @@
 % so add the repo root. The bare figures dir is kept too for any short names.
 \graphicspath{{../}{../results/figures/}}   % figures generated from logs
 
+% ---- Generated numbers (MUST precede any chapter that uses them) ----
+% numbers.tex defines a macro for every result figure cited in the text
+% (\accPfiveMcq, \f1PthreeOpen, ...). Chapters never hard-code a result: a
+% literal cannot be regenerated and silently rots when the scorer changes, which
+% is exactly what happened before this was introduced. Regenerate with:
+%     python scripts/generate_tables.py
+% A regression test (tests/regression/test_no_number_drift.py) fails the build if
+% any of these are hand-edited or fall out of step with the logs.
+\input{../results/tables/numbers}
+
 % ---- Shared listing style (chapters may redefine locally; harmless) ----
 \lstdefinestyle{pyqvault}{
   basicstyle=\ttfamily\footnotesize,
