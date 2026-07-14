@@ -25,13 +25,20 @@ matplotlib.use("Agg")  # headless: write files, open no window
 import matplotlib.pyplot as plt
 
 from medrag_adaptive.evaluation.metrics import aggregate_summary
+from medrag_adaptive.evaluation.loading import load_run
 
 RAW = Path("results/raw_logs")
 FIG = Path("results/figures")
 
 
 def load(name: str) -> List[dict]:
-    return [json.loads(l) for l in io.open(RAW / name, encoding="utf-8")]
+    """Read a log through the canonical loader — the single source of truth.
+
+    `load_run` re-scores MCQ records with the current extractor and voids the
+    unusable open-ended `is_correct`, so every figure here plots exactly the
+    numbers the tables and the prose report. See `evaluation/loading.py`.
+    """
+    return load_run(RAW / name)
 
 
 def _save(fig, stem: str) -> None:
