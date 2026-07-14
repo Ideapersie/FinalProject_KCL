@@ -156,7 +156,17 @@ def stage_embed(corpus: Path, work: Path, shard_size: int,
         if shard_path.exists():
             continue  # resume: already embedded
         if model is None:
-            model = SentenceTransformer(model_name, device="cpu")
+            # Use the GPU when there is one. On the CPU-only laptop this stays
+            # "cpu" exactly as before; on a Colab T4 it cuts embedding 426K
+            # chunks from roughly an hour to ~10 minutes, which matters because
+            # a free Colab session is capped at ~12 h.
+            try:
+                import torch
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+            except ImportError:
+                device = "cpu"
+            log(f"[embed] embedding on {device}", logfile)
+            model = SentenceTransformer(model_name, device=device)
         lo, hi = s * shard_size, min((s + 1) * shard_size, total)
         texts = [f"{c['title']} {c['text']}" for c in all_chunks[lo:hi]]
         vecs = model.encode(texts, convert_to_numpy=True,
