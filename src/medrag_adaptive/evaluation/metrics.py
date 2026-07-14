@@ -47,6 +47,30 @@ def wilson_interval(successes: int, n: int, z: float = 1.96) -> Tuple[float, flo
     return max(0.0, centre - half), min(1.0, centre + half)
 
 
+def proportion_diff_interval(
+    succ_a: int, n_a: int, succ_b: int, n_b: int, z: float = 1.96
+) -> Tuple[float, float, float]:
+    """Newcombe 95%% interval for the difference of two proportions (p_a - p_b).
+
+    Returns (difference, low, high). Built from the two Wilson intervals, which
+    keeps it valid at the sample sizes here (n=200, and far smaller once split by
+    risk level) where the normal approximation is not.
+
+    This exists so the headline "+9.0 pp" claim is *computed* with its uncertainty
+    rather than asserted. At n=200 per arm the interval is wide enough that the
+    honest phrasing is "consistent with an improvement", not "proves one" — and
+    the chapter must say so.
+    """
+    p_a = succ_a / n_a if n_a else float("nan")
+    p_b = succ_b / n_b if n_b else float("nan")
+    l_a, u_a = wilson_interval(succ_a, n_a, z)
+    l_b, u_b = wilson_interval(succ_b, n_b, z)
+    diff = p_a - p_b
+    low = diff - math.sqrt((p_a - l_a) ** 2 + (u_b - p_b) ** 2)
+    high = diff + math.sqrt((u_a - p_a) ** 2 + (p_b - l_b) ** 2)
+    return diff, max(-1.0, low), min(1.0, high)
+
+
 def risk_stratified_summary(records: Sequence[Record]) -> Dict[str, dict]:
     """Per-risk accuracy with n and a 95%% Wilson interval, for one policy's records.
 
@@ -85,11 +109,20 @@ class PolicySummary:
 
 
 def aggregate_summary(records: Sequence[Record]) -> PolicySummary:
-    """Mean accuracy / retrieval-rate / latency / energy over `records`."""
+    """Mean accuracy / retrieval-rate / latency / energy over `records`.
+
+    Records with `is_correct=None` are EXCLUDED from the accuracy mean. The
+    canonical loader sets that on open-ended records, where the logged flag is
+    unusable (see `evaluation/loading.py`). If no record is scorable, accuracy is
+    NaN rather than 0.0 — a missing metric must be loud, not silently look like a
+    policy that got everything wrong.
+    """
     n = len(records)
     if n == 0:
-        return PolicySummary(0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    acc = sum(bool(r.get("is_correct")) for r in records) / n
+        return PolicySummary(0, float("nan"), 0.0, 0.0, 0.0, 0.0)
+    scorable = [r for r in records if r.get("is_correct") is not None]
+    acc = (sum(bool(r["is_correct"]) for r in scorable) / len(scorable)
+           if scorable else float("nan"))
     ret = sum(bool(r.get("retrieval_triggered")) for r in records) / n
     f1 = sum(float(r.get("f1_score") or 0.0) for r in records) / n
     lat = sum(float(r.get("latency_ns") or 0) for r in records) / n / 1e9
