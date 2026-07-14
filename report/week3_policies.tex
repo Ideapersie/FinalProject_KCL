@@ -161,7 +161,7 @@ Table~\ref{tab:week3-results} reports all completed runs on the 200-question set
 Two results stand out. First, calibration works exactly as designed: P5's
 retrieval rate moves from 0\% to 50\% (MCQ) and 79\% (open-ended). Second, and
 more consequentially, \emph{once P5 begins retrieving on the pilot corpus its
-multiple-choice accuracy falls} from 62.0\% (identical to closed-book, when it
+multiple-choice accuracy falls} from ccPthreeMcq{} (identical to closed-book, when it
 never retrieved) to 45.5\%.
 
 \begin{table}[t]
@@ -171,11 +171,11 @@ never retrieved) to 45.5\%.
     Policy & Type & $n$ & Acc.\ / F1 & Retrieval & Latency/q \\
     \midrule
     P1 always-retrieve   & MCQ  & 200 & 17.0\%          & 100\% & 12\,s \\
-    P3 closed-book       & MCQ  & 200 & 62.0\%          & 0\%   & 57\,s \\
-    P5 gated (uncalib.)  & MCQ  & 200 & 62.0\%          & 0\%   & 142\,s \\
+    P3 closed-book       & MCQ  & 200 & ccPthreeMcq   & etPthreeMcq & \latPthreeMcq \\
+    P5 gated (uncalib.)  & MCQ  & 200 & ccPthreeMcq   & 0\%   & 142\,s \\
     P5 gated (calibrated)& MCQ  & 200 & 45.5\%          & 50\%  & 159\,s \\
     \midrule
-    P3 closed-book       & open & 200 & 0.190 (F1)      & 0\%   & 27\,s \\
+    P3 closed-book       & open & 200 & 1PthreeOpen (F1) & etPthreeOpen & 27\,s \\
     P5 gated (calibrated)& open & 200 & 0.191 (F1)      & 79\%  & 171\,s \\
     \bottomrule
   \end{tabular}

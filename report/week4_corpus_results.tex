@@ -61,19 +61,23 @@ corpus-independent (it never retrieves) and serves as a fixed reference.
     \toprule
     Policy & Type & Metric & Pilot & MedCorp & Retrieval & Latency/q \\
     \midrule
-    P1 always-retrieve   & MCQ  & Acc. & 17\%    & \textbf{46\%}  & 100\% & 27\,s \\
-    P4 hybrid            & MCQ  & Acc. & ---     & 46\%           & 100\% & 25\,s \\
-    P3 closed-book$^{*}$ & MCQ  & Acc. & 62\%    & 62\%           & 0\%   & 57\,s \\
-    P5 gated (calib.)    & MCQ  & Acc. & 45.5\%  & \textbf{54\%}  & 50\%  & 153\,s \\
+    P1 always-retrieve   & MCQ  & Acc. & 17\%   & \textbf{\accPoneMcq}  & \retPoneMcq  & \latPoneMcq \\
+    P4 hybrid            & MCQ  & Acc. & ---    & \accPfourMcq          & \retPfourMcq & \latPfourMcq \\
+    P3 closed-book$^{*}$ & MCQ  & Acc. & \accPthreeMcq & \accPthreeMcq  & \retPthreeMcq & \latPthreeMcq \\
+    P5 gated (calib.)    & MCQ  & Acc. & 45.5\%$^{\ddagger}$ & \textbf{\accPfiveMcq} & \retPfiveMcq & \latPfiveMcq \\
     \midrule
-    P1 always-retrieve   & open & F1   & ---     & \textbf{0.220} & 100\% & 23\,s \\
-    P3 closed-book$^{*}$ & open & F1   & 0.190   & 0.190          & 0\%   & 27\,s \\
-    P5 gated (calib.)    & open & F1   & 0.191   & \textbf{0.211} & 79\%  & 380\,s \\
+    P1 always-retrieve   & open & F1   & ---    & \textbf{\f1PoneOpen}  & \retPoneOpen  & 23\,s \\
+    P3 closed-book$^{*}$ & open & F1   & \f1PthreeOpen & \f1PthreeOpen  & \retPthreeOpen & 27\,s \\
+    P5 gated (calib.)    & open & F1   & 0.191$^{\ddagger}$ & \textbf{\f1PfiveOpen} & \retPfiveOpen & 380\,s \\
     \bottomrule
   \end{tabular}
   \caption{All policies on the real MedCorp corpus (425{,}847 chunks) versus the
-  200-chunk pilot. Quantised Llama-3.2-3B, medium tier. $^{*}$P3 is closed-book,
-  so its numbers are corpus-independent references.}
+  200-chunk pilot. Quantised Llama-3.2-3B, medium tier. MedCorp columns are
+  generated directly from the run logs (see Section~\ref{sec:eval-provenance});
+  $^{*}$P3 is closed-book, so its result is corpus-independent --- a paired run
+  over the identical question set, verified by regression test.
+  $^{\ddagger}$Pilot-corpus figures are retained from the earlier sprint for
+  contrast and are not regenerated.}
   \label{tab:medcorp-results}
 \end{table}
 
@@ -81,7 +85,7 @@ Three findings follow directly from the table.
 
 \paragraph{1. The corpus was the bottleneck, confirmed.} Every retrieving policy
 improved sharply once the real corpus replaced the pilot: P1's multiple-choice
-accuracy rose from 17\% to 46\%, and open-ended F1 rose across the board
+accuracy rose from 17\% to \accPoneMcq, and open-ended F1 rose across the board
 (Figure~\ref{fig:corpus-effect}). This retrospectively validates the Week~3
 interpretation --- the earlier accuracy collapse was a property of the corpus, not
 of the gate. Retrieval is only useful when the corpus contains the answer.
@@ -96,34 +100,44 @@ of the gate. Retrieval is only useful when the corpus contains the answer.
 \end{figure}
 
 \paragraph{2. Selective retrieval beats always-retrieve --- the core result.}
-Among the retrieving policies, the gated policy P5 is the best: 54\% versus 46\%
-for both P1 (always) and P4 (hybrid), while retrieving on only \emph{half} the
-queries (Figure~\ref{fig:medcorp-policies}). This is the project's central claim
-made concrete. By skipping retrieval on the questions the model already answers
-confidently, P5 avoids the distraction that unnecessary context injects, and it
-does so at half the retrieval cost. The gate is not merely reducing compute for
-free --- on multiple choice it is \emph{more accurate} than retrieving every time.
+Among the retrieving policies, the gated policy P5 is the best: \accPfiveMcq{}
+versus \accPoneMcq{} for both P1 (always) and P4 (hybrid), while retrieving on only
+\emph{half} the queries (Figure~\ref{fig:medcorp-policies}). This is the project's
+central claim made concrete. By skipping retrieval on the questions the model
+already answers confidently, P5 avoids the distraction that unnecessary context
+injects, and it does so at half the retrieval cost. The gate is not merely reducing
+compute for free --- on multiple choice it is \emph{more accurate} than retrieving
+every time.
+
+The size of that gap must be stated carefully. The improvement is
+\diffPfivePone{} percentage points, but with $n=\nQuestions{}$ questions its 95\%
+confidence interval is \diffPfivePoneCI{}, which includes zero. The accuracy gain is
+therefore \emph{consistent with} a genuine improvement rather than proof of one, and
+this evaluation is not powered to establish it conclusively. The reduction in
+retrieval calls, by contrast, is not a sampling estimate: P5 answered half the
+queries without touching the corpus at all. The cost half of the result is exact;
+the accuracy half is suggestive.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.75\linewidth]{results/figures/fig_medcorp_policies}
   \caption{MCQ accuracy by policy on the real corpus. Among retrieving policies,
-  the gated policy P5 (54\%, retrieving 50\% of the time) beats always-retrieve
-  P1/P4 (46\%, 100\%). Closed-book P3 (62\%) remains highest, reflecting that
-  MIRAGE's multiple-choice questions largely test knowledge the model already
-  holds.}
+  the gated policy P5 (\accPfiveMcq, retrieving \retPfiveMcq{} of the time) beats
+  always-retrieve P1/P4 (\accPoneMcq, \retPoneMcq). Closed-book P3 (\accPthreeMcq)
+  remains highest, reflecting that MIRAGE's multiple-choice questions largely test
+  knowledge the model already holds.}
   \label{fig:medcorp-policies}
 \end{figure}
 
 \paragraph{3. On multiple choice, closed-book still leads --- a model-capability
-ceiling.} P3 closed-book (62\%) remains above all retrieving policies. MIRAGE's
+ceiling.} P3 closed-book (\accPthreeMcq) remains above all retrieving policies. MIRAGE's
 multiple-choice questions predominantly probe textbook knowledge the 3B model
 already holds parametrically, so retrieved context can only distract, never inform.
 The gate narrows but does not close this gap, because no per-query signal is a
 perfect predictor of whether a given retrieval will help. Crucially, the
 open-ended results tell the opposite story: there the model \emph{lacks} the
-specific study findings, retrieval genuinely adds information, and P5 (F1 0.211)
-edges above closed-book (0.190). Retrieval helps precisely when the model does not
+specific study findings, retrieval genuinely adds information, and P5 (F1 \f1PfiveOpen)
+edges above closed-book (\f1PthreeOpen). Retrieval helps precisely when the model does not
 already know the answer --- which is exactly the condition the gate exists to
 detect.
 
@@ -134,7 +148,8 @@ detect.
 The safety-envelope analysis asks, for each clinical risk level, which is the
 cheapest policy whose accuracy clears a safety bar (low $\geq$70\%, medium
 $\geq$80\%, high $\geq$90\%). On the real corpus \emph{no} policy clears even the
-low-risk bar: the best result on this benchmark, closed-book P3, is 62\%. This is
+low-risk bar: the best result on this benchmark, closed-book P3, is \accPthreeMcq{}
+--- \gapToLowBar{} percentage points short of the \barLow{} low-risk threshold. This is
 now a \textbf{model-capability ceiling}, not a corpus limitation --- retrieval has
 been shown to work, and the corpus contains the answers, yet the quantised 3B
 model tops out well below the clinical thresholds.

@@ -214,7 +214,7 @@ most informative result of this sprint --- in Table~\ref{tab:p5-gatevotes}.
     \toprule
     \textbf{Metric} & \textbf{P3 (closed-book)} & \textbf{P5 (gated, uncal.)} \\
     \midrule
-    Accuracy            & 62.0\% & 62.0\% \\
+    Accuracy            & ccPthreeMcq & ccPthreeMcq \\
     Retrieval rate      & 0\%    & 0\% \\
     Median latency      & 7.42\,s & 143.7\,s \\
     95th-pct.\ latency  & 9.25\,s & 154.1\,s \\
@@ -246,7 +246,7 @@ most informative result of this sprint --- in Table~\ref{tab:p5-gatevotes}.
 \paragraph{Interpretation and the central finding.}
 At the thresholds inherited from the general-domain literature ($\tau_H=2.5$
 nats, $\tau_M=0.3$), the gate retrieved on \emph{zero} of the 200 questions, so
-P5 reduced to the closed-book policy and reproduced its 62.0\% accuracy exactly.
+P5 reduced to the closed-book policy and reproduced its ccPthreeMcq{} accuracy exactly.
 The per-gate trace in Table~\ref{tab:p5-gatevotes} explains why: on the
 4-bit-quantised Llama-3.2-3B, greedy drafts are sharply peaked, so the mean
 token entropy (observed range 0.27--1.59 nats) never approaches the 2.5-nat
