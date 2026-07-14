@@ -27,7 +27,12 @@ import io
 import json
 import sys
 from itertools import combinations
+from pathlib import Path
 from typing import Dict, List
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from medrag_adaptive.evaluation.loading import load_run
 
 sys.stdout.reconfigure(encoding="utf-8")
 
@@ -35,7 +40,9 @@ GATES = ["entropy", "margin", "hallucination_probe"]
 
 
 def load(path: str) -> List[dict]:
-    return [json.loads(l) for l in io.open(path, encoding="utf-8")]
+    """Read through the canonical loader so the ablation's accuracy figures
+    reconcile exactly with the tables and prose. See `evaluation/loading.py`."""
+    return load_run(path)
 
 
 def _gate_retrieves(votes: Dict[str, str], gate: str) -> bool:
@@ -87,6 +94,21 @@ def ablate(records: List[dict]) -> None:
 
     # Decision-consistent accuracy: where a solo gate == ensemble decision, the
     # logged accuracy applies; where it would flip, flag it.
+    #
+    # On OPEN-ENDED runs this is refused outright. The canonical loader voids
+    # `is_correct` there because the logged flag is a soft floor (f1 > 0) AND is
+    # inconsistent across runs (p3=0/200, p5=200/200). Emitting it would print
+    # "100% accuracy" for every gate — a meaningless artifact that would be a
+    # serious error to report. Mean token-F1 is the only defensible open-ended
+    # metric; see the evaluation chapter.
+    scorable = [r for r in recs if r.get("is_correct") is not None]
+    if not scorable:
+        print("\nSolo-gate decision-consistent accuracy: n/a (open-ended run).")
+        print("  Refusing to compute: `is_correct` is a soft floor (f1>0) and is")
+        print("  inconsistent across logs, so any accuracy from it is meaningless.")
+        print("  Report mean token-F1 instead.")
+        return
+
     print("\nSolo-gate vs ensemble decision consistency + accuracy where consistent:")
     ens_acc = sum(bool(r["is_correct"]) for r in recs) / n
     print(f"  {'ENSEMBLE':20s} acc {ens_acc:5.0%}  (all {n} queries)")
