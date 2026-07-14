@@ -86,6 +86,24 @@ def score_and_record(question, result, cfg) -> RunRecord:
     if result.gate_details:
         qvault["gate_details"] = result.gate_details
 
+    # What was actually retrieved. Without this the logs can show THAT retrieval
+    # hurt but not WHY — whether the passages were irrelevant (a retriever fault)
+    # or relevant-but-distracting (a model fault). Those have opposite remedies,
+    # so the distinction has to be recoverable from the log, not guessed at.
+    # Text is truncated: enough to judge relevance, not so much that the log
+    # becomes a second copy of the corpus.
+    if result.retrieved_chunks:
+        qvault["retrieved_chunks"] = [
+            {
+                "chunk_id": c.chunk_id,
+                "source": c.source,
+                "title": c.title,
+                "score": float(c.score),
+                "text": c.text[:600],
+            }
+            for c in result.retrieved_chunks
+        ]
+
     return RunRecord(
         question_id=question.question_id,
         dataset_source=question.dataset_source,
@@ -158,13 +176,19 @@ def main() -> None:
     ap.add_argument("--retrieval-mode", default=None,
                     choices=["none", "bm25", "vector", "hybrid"],
                     help="override cfg.policy.retrieval_mode")
+    ap.add_argument("--model-config", default=None,
+                    help="configs/models/*.yaml — carries the model's chat markup, "
+                         "GPU offload and quantised path (e.g. qwen14b.yaml). "
+                         "Use this, NOT --model, when switching model family: "
+                         "--model only swaps the weights and would leave the "
+                         "prompts in the previous model's chat format.")
     ap.add_argument("--model", default=None, help="override gguf_path from config")
     ap.add_argument("--max-questions", type=int, default=None)
     ap.add_argument("--output", required=True)
     args = ap.parse_args()
 
     cfg = load_config(
-        base=args.base, hardware=args.hardware,
+        base=args.base, hardware=args.hardware, model=args.model_config,
         policy=args.policy, experiment=args.experiment,
     )
     if args.max_questions is not None:
