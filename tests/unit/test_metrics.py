@@ -20,6 +20,7 @@ from medrag_adaptive.evaluation.metrics import (
     expected_calibration_error,
     citation_precision_recall,
     safety_envelope,
+    proportion_diff_interval,
     wilson_interval,
     risk_stratified_summary,
     PolicySummary,
@@ -59,8 +60,23 @@ class TestAggregate:
         assert s.mean_latency_s == pytest.approx(3.0)
 
     def test_empty_is_safe(self):
+        # Accuracy of nothing is NaN, not 0.0 — a missing metric must be loud,
+        # not masquerade as a policy that got every question wrong.
         s = aggregate_summary([])
-        assert s.n == 0 and s.accuracy == 0.0
+        assert s.n == 0
+        assert s.accuracy != s.accuracy      # NaN
+
+    def test_none_is_correct_excluded_from_accuracy(self):
+        # The canonical loader sets is_correct=None on open-ended records; those
+        # must not be counted as wrong answers.
+        recs = [_rec(is_correct=True), _rec(is_correct=None), _rec(is_correct=None)]
+        s = aggregate_summary(recs)
+        assert s.n == 3                      # all records counted for latency etc.
+        assert s.accuracy == pytest.approx(1.0)   # ...but accuracy over the 1 scorable
+
+    def test_all_none_gives_nan_accuracy(self):
+        s = aggregate_summary([_rec(is_correct=None), _rec(is_correct=None)])
+        assert s.accuracy != s.accuracy      # NaN, not 0.0
 
 
 # ── ECE ──────────────────────────────────────────────────────────────
@@ -177,3 +193,28 @@ class TestRiskStratified:
         out = risk_stratified_summary([_rec(risk_level="low", is_correct=True)])
         assert out["high"]["n"] == 0
         assert out["high"]["accuracy"] != out["high"]["accuracy"]  # nan
+
+
+# ── Newcombe difference interval (the "+9.0 pp" headline claim) ────────
+
+class TestProportionDiff:
+    def test_difference_is_correct(self):
+        diff, lo, hi = proportion_diff_interval(109, 200, 91, 200)   # P5 vs P1
+        assert diff == pytest.approx(0.09, abs=1e-9)
+        assert lo < diff < hi
+
+    def test_interval_is_wide_at_n200(self):
+        # The honest point of this function: at n=200/arm the interval is wide
+        # enough that a +9pp gap is "consistent with an improvement", not proof.
+        _, lo, hi = proportion_diff_interval(109, 200, 91, 200)
+        assert (hi - lo) > 0.15
+
+    def test_identical_arms_bracket_zero(self):
+        diff, lo, hi = proportion_diff_interval(91, 200, 91, 200)
+        assert diff == pytest.approx(0.0)
+        assert lo < 0.0 < hi
+
+    def test_narrows_with_larger_n(self):
+        _, lo_s, hi_s = proportion_diff_interval(109, 200, 91, 200)
+        _, lo_l, hi_l = proportion_diff_interval(1090, 2000, 910, 2000)
+        assert (hi_l - lo_l) < (hi_s - lo_s)

@@ -57,6 +57,19 @@ class ModelConfig(BaseModel):
     max_new_tokens: int   = 256
     verbose:        bool  = False
 
+    # Chat markup this model was instruction-tuned on. Llama/Mistral use
+    # [INST]...[/INST]; Qwen2.5 uses ChatML (<|im_start|>). Using the wrong one
+    # does not error, it silently degrades output — so it must be set per model
+    # or a cross-model comparison measures the prompt, not the model.
+    chat_format:    str   = "llama"
+
+    # Layers to offload to the GPU. 0 = CPU only (the default, and the primary
+    # CPU-only contribution of this project). -1 = all layers on GPU, used for
+    # the cloud scaling runs. llama-cpp keeps `_scores` and `logprobs=2`
+    # available under CUDA, so the entropy and margin gates work unchanged —
+    # this is why the backend stays on llama-cpp rather than vLLM/TGI.
+    n_gpu_layers:   int   = 0
+
     @field_validator("temperature")
     @classmethod
     def temperature_is_zero_for_reproducibility(cls, v: float) -> float:
@@ -203,19 +216,27 @@ def _load_yaml(path: str | Path) -> Dict[str, Any]:
 def load_config(
     base:       str | Path = "configs/base.yaml",
     hardware:   str | Path | None = None,
+    model:      str | Path | None = None,
     policy:     str | Path | None = None,
     experiment: str | Path | None = None,
 ) -> ProjectConfig:
     """
     Load and merge YAML config files in order:
-        base → hardware → policy → experiment
+        base → hardware → model → policy → experiment
 
     Later files override earlier ones via deep-merge.
     The result is validated into a ProjectConfig Pydantic model.
 
+    `model` (configs/models/*.yaml) carries everything that must travel WITH a
+    given model and cannot be inferred from its weights: its chat markup, its GPU
+    offload, its quantised path. It sits after `hardware` so a model config can
+    raise the batch size / thread count appropriately for a GPU run, and before
+    `policy`/`experiment` so a specific experiment can still override it.
+
     Args:
         base:       Path to base.yaml (required).
         hardware:   Path to hardware_*.yaml (optional).
+        model:      Path to models/*.yaml (optional) — e.g. qwen14b.yaml.
         policy:     Path to policies/*.yaml (optional).
         experiment: Path to experiments/*.yaml (optional).
 
@@ -224,7 +245,7 @@ def load_config(
     """
     merged: Dict[str, Any] = _load_yaml(base)
 
-    for extra in (hardware, policy, experiment):
+    for extra in (hardware, model, policy, experiment):
         if extra is not None:
             merged = _deep_merge(merged, _load_yaml(extra))
 
