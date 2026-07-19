@@ -1,0 +1,115 @@
+% =====================================================================
+%  Chapter 7 — Legal, Social, Ethical and Professional Issues (~1,200 words)
+%  DRAFT generated 2026-07-18. KCL rubric requirement. Every point ties to
+%  a specific design decision in this project — no generic AI-ethics filler.
+% =====================================================================
+\chapter{Legal, Social and Ethical Considerations}
+\label{ch:lsep}
+
+\section{Patient Safety and Clinical Liability}
+\label{sec:lsep-safety}
+
+The asymmetry of harm in clinical question answering --- an unnecessary
+retrieval costs seconds; a confidently wrong drug-interaction answer could
+cost a patient --- is not a rhetorical framing in this project but an
+\emph{encoded design decision}: the gate ensemble is deliberately biased
+toward retrieving when its signals disagree
+(Section~\ref{sec:method-why-three}), and the risk tagger's precedence rules
+default toward the more cautious label. Safety asymmetry shaped the
+artefact, not just the write-up.
+
+The evaluation then returned a result that this chapter must state as
+plainly as the technical chapters do: the safety envelope is empty. No
+policy configuration evaluated here clears even the lowest stipulated
+accuracy bar, and therefore \textbf{this system must not be used for
+clinical decision support}, in education-adjacent settings included, without
+qualified human oversight. A dissertation that quantifies its own system's
+unfitness for deployment is making the safety-relevant contribution;
+concealing that distance would be the ethical failure.
+
+Liability follows the same logic. If such a system were deployed and gave a
+harmful answer, responsibility would distribute contentiously across the
+model provider, the deployer, and the clinician who acted on the output ---
+and regulatory regimes increasingly refuse to let the software disclaim its
+way out. Under the UK MHRA's software-as-a-medical-device guidance and the
+EU AI Act's high-risk classification for clinical decision support, a
+deployed version of this system would attract conformity obligations this
+research prototype has never been assessed against. It is a benchmark
+instrument, not a device, and the report says so.
+
+One empirical finding sharpens the automation-bias concern beyond the
+generic. Section~\ref{sec:eval-distraction} showed that when retrieval
+misleads the model, its wrong answers become \emph{longer and more fluent}
+($15\times$ longer than the terse correct closed-book answers). Fluency and
+confidence are exactly the surface features that induce human over-trust.
+The failure mode this system exhibits is therefore the \emph{most} dangerous
+kind for a clinical reader --- wrong answers that look thorough --- which is
+an independent argument for surfacing machine uncertainty
+(Section~\ref{sec:disc-deployment}) rather than only polished prose.
+
+\section{Privacy, Data Governance and Sovereignty}
+\label{sec:lsep-privacy}
+
+The offline, CPU-only architecture is a \emph{privacy architecture}, not
+merely a cost profile. No query, no patient context, and no retrieved
+passage ever leaves the device: there is no API call to log, no third-party
+processor to contract with, and no cross-border transfer to assess. That is
+what makes the design viable precisely where GDPR, NHS data-governance
+frameworks and analogous regimes make cloud LLM use difficult or
+impermissible --- and it is why ``offline'' appears in the problem statement
+rather than the limitations.
+
+Honesty about what this project did \emph{not} have to handle belongs here.
+The corpus is built from public sources (medical textbooks and PubMed
+abstracts) and the benchmarks are public research datasets; \textbf{no
+patient data was processed at any point}. The credentialed EHR datasets
+contemplated in the original project plan were not used. The privacy
+property of the architecture is real, but it was demonstrated on public
+data; claiming hard-won privacy engineering would be false, and the accurate
+claim is architectural: a system with no network egress cannot leak what it
+processes.
+
+Data licensing was respected in the corpus build: MedRAG's corpora are
+distributed for research use, and the derived indexes remain local research
+artefacts, not redistributed products.
+
+\section{Bias, Equity and Access}
+\label{sec:lsep-bias}
+
+Neither of the gate's two paths is neutral. When the system retrieves, it
+inherits the perspective of its corpus --- Western-published textbooks and
+PubMed abstracts, whose epidemiological assumptions, drug availability and
+demographic baselines are baked into every passage. When the gate skips, the
+system inherits the training distribution of the base model instead. A gate
+therefore does not remove bias; it \emph{selects between two bias profiles}
+per query, and no analysis in this study measures the demographic
+consequences of that selection --- an acknowledged gap.
+
+The equity argument that motivates the project also carries its own warning.
+An offline CPU-only system is exactly the configuration that can run where
+GPUs, budgets and connectivity do not exist --- rural practice, LMIC
+clinics, training hospitals. Those settings have the most to gain from
+deployable clinical QA, and the least infrastructure to verify it. But
+Section~\ref{sec:eval-envelope} shows the present system does not meet even
+lenient safety bars, and shipping an unsafe system to under-resourced
+settings --- where clinical backstop capacity is thinnest --- would be worse
+than shipping nothing. Equity of access must mean access to a \emph{safe}
+system; this work quantifies how far that still is.
+
+\section{Environmental Cost}
+\label{sec:lsep-energy}
+
+Per-query energy was measured throughout with \texttt{codecarbon} and is a
+software estimate, not a metered hardware measurement --- reported as such.
+The honest accounting cuts against the intuitive green claim: the gate
+halves retrieval calls but \emph{adds} three draft generations per query, so
+on this hardware --- where generation dominates energy --- gating is not
+currently an energy win (Section~\ref{sec:eval-cost}). The energy case for
+gating is real but conditional: it holds where retrieval dominates the cost
+profile (large corpora, remote or disk-bound indexes), not on this laptop.
+No unearned environmental benefit is claimed; the merged-draft optimisation
+of Section~\ref{sec:conc-future} is the identified path to reducing the
+gate's own footprint. More broadly, the project's choice of a small
+quantised model on commodity hardware sits at the frugal end of the field's
+energy spectrum \citep{strubell2019}, which is itself an environmentally
+relevant design position.

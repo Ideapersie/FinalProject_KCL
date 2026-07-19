@@ -1,0 +1,104 @@
+% =====================================================================
+%  Chapter 8 — Conclusion and Future Work  (~900 words)
+%  DRAFT generated 2026-07-18.
+% =====================================================================
+\chapter{Conclusion and Future Work}
+\label{ch:conclusion}
+
+\section{Summary of Contributions}
+\label{sec:conc-summary}
+
+This dissertation asked when an offline, CPU-only medical question-answering
+system should retrieve, and answered it with a training-free three-gate
+ensemble evaluated end-to-end on a quantised 3B model over a 426K-chunk
+medical corpus. The contributions, with their evidence:
+
+\textbf{A working training-free gate} (C1). Token entropy, logit margin and
+a two-draft hallucination probe, majority-voted, with hardware-aware
+degradation --- no fine-tuning, no labelled data, no second model
+(Chapter~\ref{ch:method}).
+
+\textbf{Calibration non-transfer} (C2). Literature thresholds are physically
+unreachable on the quantised model (observed entropy 0.27--1.59 nats against
+a 2.5-nat trigger); offline replay recalibration finds usable operating
+points in seconds. Gate thresholds are model-specific and must be treated as
+such (Section~\ref{sec:eval-calibration}).
+
+\textbf{Retrieval as distraction} (C3). Retrieval broke 46 previously
+correct answers and fixed 13 --- harmful $3.5{:}1$ --- with chunks equally
+on-topic but $2.4\times$ less answer-bearing where it harmed
+(Section~\ref{sec:eval-distraction}).
+
+\textbf{The protective skip} (C4). On those poisoned questions the gate's
+skip scored 19/19; its retrieve, 3/27. The gate's value on this evidence is
+protection at the boundary of parametric knowledge, not merely cost saving
+(Section~\ref{sec:eval-protective}).
+
+\textbf{The safety envelope} (C5). No policy clears any stipulated clinical
+bar; the best, closed-book at \accPthreeMcq{}, is \gapToLowBar{}pp short of
+the lowest. The measured distance to clinical acceptability for this
+deployment class is the honest deliverable
+(Section~\ref{sec:eval-envelope}).
+
+\textbf{A reproducible harness} (C6). Log-generated numbers with a
+drift-guard test, 180+ model-free unit tests, paired-run proofs, exact
+determinism (Chapter~\ref{ch:impl}).
+
+Every claim is held at the strength its evidence supports: the retrieval
+halving (\retPfiveMcq{} versus \retPoneMcq{}) is exact; the accuracy gain
+(\diffPfivePone{}pp, 95\% CI \diffPfivePoneCI{}) is consistent with an
+improvement but not established at $n=\nQuestions{}$; the envelope is empty.
+If one sentence survives this dissertation, it should be this: retrieval,
+the field's default remedy for hallucination, made this model \emph{worse}
+on 46 of 200 questions it already knew --- and the gate's contribution is
+knowing when not to use it.
+
+\section{Future Work}
+\label{sec:conc-future}
+
+Ordered by ratio of value to effort, each specific enough to pick up:
+
+\begin{enumerate}
+  \item \textbf{Cross-model scaling study.} All prerequisites exist and are
+    verified: a chat-format abstraction proven byte-identical for existing
+    logs, Qwen-2.5 7B/14B configurations at matched quantisation, a
+    four-check smoke test gating long runs, and a resumable GPU notebook.
+    Running P3+P5 (MCQ and open-ended) on one larger model answers the two
+    questions single-model evidence cannot: does calibration non-transfer
+    recur (expected: yes, with a different operating point), and does
+    selective-beats-always survive scale? It also tests whether the
+    closed-book ceiling rises toward the safety bars.
+  \item \textbf{Content-aware entropy.} Section~\ref{sec:eval-attribution}
+    showed raw token entropy fires on phrasing, not clinical content.
+    Restricting the mean to content tokens, or weighting by attention to the
+    question's clinical terms, directly attacks the method's clearest
+    measured weakness --- and can be prototyped offline against the logged
+    per-token arrays before any live run.
+  \item \textbf{Retrieval-aware (post-hoc) gating.} The distraction analysis
+    showed the harmful case is topically-relevant, non-answer-bearing
+    chunks. The current gate must commit \emph{before} seeing any evidence;
+    a second-stage gate asking ``having seen the chunks, are they
+    decisive?'' could reject a retrieval after the fact and reclaim part of
+    the 3/27 failure region.
+  \item \textbf{Gate cost optimisation.} The entropy and margin signals
+    derive from the same draft but are currently generated twice; merging
+    them cuts five model calls per query to four ($\sim$20\% latency), and a
+    probe-free logit-only configuration would remove the two probe drafts
+    that dominate cost --- at a measured accuracy trade-off to be
+    quantified. Section~\ref{sec:eval-cost} shows latency, not retrieval
+    rate, is the binding cost on CPU.
+  \item \textbf{Statistical power.} The full 7,663-question MIRAGE
+    benchmark, multiple seeds, and a purposely balanced high-risk stratum
+    --- the current $n=6$ is the single weakest point of the safety
+    analysis --- would convert suggestive intervals into decidable ones.
+  \item \textbf{Deployment surface.} A human-in-the-loop interface exposing
+    the gate decision, its signals and per-token uncertainty to a clinician
+    reviewer; and physical benchmarking of the low/high hardware tiers on
+    real 4\,GB and 16\,GB devices, closing the gap between the implemented
+    mechanism and the measured claim.
+\end{enumerate}
+
+The through-line of all six is the same as the dissertation's: in
+safety-critical, resource-constrained settings, the interesting question is
+not how to make a model retrieve better, but how to make a system know when
+its model already knows.

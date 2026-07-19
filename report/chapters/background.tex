@@ -1,0 +1,184 @@
+% =====================================================================
+%  Chapter 2 — Background and Related Work  (~2,500 words)
+%  DRAFT generated 2026-07-18. Citation keys match references.bib; verify
+%  every [VERIFY] comment against the actual paper before submission.
+% =====================================================================
+\chapter{Background and Related Work}
+\label{ch:background}
+
+\section{Retrieval-Augmented Generation}
+\label{sec:bg-rag}
+
+Retrieval-augmented generation couples a parametric language model with a
+non-parametric memory: at inference time, passages relevant to the query are
+retrieved from a corpus and placed in the model's context, and the model
+generates conditioned on both \citep{lewis2020rag}. The appeal for
+knowledge-intensive domains is threefold. Knowledge can be updated by editing
+the corpus rather than retraining the model; answers can carry provenance,
+since the supporting passage is known; and hallucination is, in principle,
+suppressed, because the model is instructed to ground its answer in the
+provided evidence.
+
+The standard pipeline --- retrieve, augment, generate --- embeds an assumption
+that is rarely stated and almost never tested: that retrieved context is at
+worst \emph{neutral}. If the passages are unhelpful, the model is assumed to
+fall back on what it already knows. Surveys of the field
+\citep{gao2023ragsurvey} catalogue failure modes of the retriever (missed
+evidence, noisy passages) but treat the generator's response to unnecessary
+context as benign. A central empirical result of this dissertation
+(Section~\ref{sec:eval-distraction}) is that this assumption fails for a
+small quantised model: topically relevant but non-decisive context actively
+displaces parametric knowledge the model would otherwise have used. This
+possibility is what makes the \emph{decision to retrieve} a safety-relevant
+choice rather than a cost optimisation, and it is the reason the present work
+gates retrieval rather than merely accelerating it.
+
+\section{Adaptive and Selective Retrieval}
+\label{sec:bg-adaptive}
+
+A growing family of methods rejects retrieve-always in favour of retrieving
+selectively. Ordering this family by \emph{how much training each method
+requires} exposes the gap this project occupies.
+
+At the training-heavy end, \textbf{Self-RAG} \citep{selfrag2024} fine-tunes
+the generator itself to emit special reflection tokens that trigger retrieval
+and critique retrieved passages. The method is effective but requires full
+fine-tuning of the generating model on curated reflection data --- infeasible
+in an offline, CPU-only deployment, and unavailable for any model one cannot
+retrain. \textbf{Adaptive-RAG} \citep{adaptiverag2024} trains a separate
+query-complexity classifier that routes each question to no-retrieval,
+single-step or multi-step retrieval. The generator is untouched, but the
+router needs labelled complexity data, and a second model must be deployed
+alongside the first. Reinforcement-learning approaches such as
+\textbf{SmartRAG} \citep{smartrag2025} optimise the retrieval policy against
+task reward, requiring a full training loop.
+% [VERIFY] SmartRAG venue/year before submission.
+
+At the training-free end sits \textbf{TARG} \citep{targ2025}, the direct
+methodological ancestor of this work. TARG derives the retrieval decision
+from signals the model already produces during a short draft generation ---
+token-level entropy, top-two margin, and related statistics --- thresholded to
+produce a retrieve/skip decision. No fine-tuning, no labelled data, no second
+model. The empirical justification for gating at all comes from
+\citet{mallen2023}: retrieval helps most on long-tail knowledge and can be
+skipped --- or is even counterproductive --- on popular facts the model
+already holds, motivating popularity- or confidence-conditioned retrieval.
+
+The gap: to the best of the author's knowledge, training-free logit-signal
+gating has not previously been evaluated (a) on \emph{medical} QA, where the
+cost asymmetry between an unnecessary retrieval and a wrong answer is
+extreme; (b) on a \emph{quantised} small model, whose logit distributions ---
+and therefore whose gate signals --- differ materially from the
+full-precision models the thresholds were calibrated on; (c) under
+\emph{offline, CPU-only} deployment constraints where both retrieval and
+generation carry real latency and energy cost; or (d) with a
+\emph{risk-stratified safety analysis} rather than aggregate accuracy alone.
+All four conditions jointly define the setting of this dissertation.
+
+\section{Medical RAG and Benchmarking}
+\label{sec:bg-medical}
+
+\textbf{MIRAGE} \citep{mirage2024} is the standard benchmark for medical RAG:
+7,663 questions drawn from five sources (MMLU-Med, MedQA, MedMCQA, PubMedQA,
+BioASQ), paired with the MedRAG toolkit and corpora (PubMed abstracts,
+StatPearls, medical textbooks, Wikipedia). Two of its findings shape this
+project's design. First, accuracy scales roughly log-linearly with the number
+of retrieved snippets --- retrieval quantity matters. Second, a
+``lost-in-the-middle'' effect penalises evidence buried mid-context ---
+retrieval \emph{placement} matters. Both suggest that retrieval is a resource
+to be spent deliberately rather than uniformly, which is the gating premise.
+
+This project uses a 200-question MMLU-Med subset of MIRAGE for
+multiple-choice evaluation, and the MedRAG textbooks corpus plus a PubMed
+slice (425,847 chunks in total) as the retrieval corpus
+(Section~\ref{sec:impl-corpus}). One honest limitation of MIRAGE must be
+stated: it is entirely multiple-choice. A gate that decides whether the model
+``already knows'' behaves differently when the answer space is four letters
+versus free text, so an open-ended complement is required.
+\textbf{PubMedQA} \citep{jin2019pubmedqa} provides it: 1,000
+expert-annotated biomedical research questions whose paragraph-length
+\emph{long answers} constitute genuine free-text QA, scored here by
+token-level $F_1$. The multiple-choice/open-ended contrast turns out to be a
+finding in itself (Section~\ref{sec:eval-main}): retrieval hurts where the
+model already knows (MCQ) and helps where it does not (PubMedQA).
+
+For scale, \citet{singhal2023medpalm} demonstrate that very large models
+reach clinician-adjacent accuracy on medical QA --- context for interpreting
+the capability ceiling that a 3B quantised model exhibits in
+Chapter~\ref{ch:eval}.
+
+\section{Uncertainty, Calibration and Confidence Signals}
+\label{sec:bg-calibration}
+
+The gate needs a per-query estimate of whether the model knows the answer.
+Three families of signal exist, and each has a characteristic failure mode;
+this section's catalogue of failure modes is the design argument for using
+three signals rather than one (Section~\ref{sec:method-gates}).
+
+\textbf{Token entropy} measures the spread of the model's full next-token
+distribution, averaged over a draft generation. Its failure mode is
+\emph{benign lexical freedom}: entropy is inflated wherever multiple phrasings
+are equally acceptable --- formatting tokens, function words, punctuation ---
+regardless of whether the underlying \emph{fact} is certain. This
+dissertation's token-level attribution analysis
+(Section~\ref{sec:eval-attribution}) demonstrates exactly this failure on
+real clinical text: entropy concentrates on filler tokens while the
+clinically decisive tokens are generated with near-certainty.
+
+\textbf{Logit margin} --- the gap between the top-two token probabilities ---
+measures decisiveness at the decision boundary rather than spread across the
+whole distribution. Its failure mode is \emph{confident error}: a model that
+has internalised a wrong fact produces a large margin on a wrong answer, and
+the gate reads certainty.
+
+\textbf{Verbalized confidence} asks the model to report its own certainty
+\citep{kadavath2022}. Large models can be usefully calibrated at this;
+small models are not --- self-reports from a 3B model are close to
+uninformative. For this reason the present work \emph{replaces} verbalized
+confidence with a stability test in the spirit of self-consistency
+\citep{wang2023selfconsistency}: generate two drafts under different prompt
+framings and measure their agreement. Genuinely held knowledge is invariant
+to surface framing; a guess is not. Reduced from many-sample majority voting
+to a two-draft agreement test, this becomes cheap enough to run per query on
+CPU.
+
+Calibration in the formal sense --- alignment between stated confidence and
+empirical accuracy --- is measured by expected calibration error
+\citep{guo2017calibration}, reported alongside accuracy in
+Chapter~\ref{ch:eval}. The deeper calibration question in this project,
+however, is a transfer question: thresholds for entropy and margin published
+for full-precision general-domain models turn out not to transfer to a
+quantised domain-specific setting at all
+(Section~\ref{sec:eval-calibration}), which is itself a contribution.
+
+\section{Efficiency and Constrained Deployment}
+\label{sec:bg-efficiency}
+
+The energy cost of neural inference is a first-order concern, not a footnote
+\citep{strubell2019}; per-query energy measurement for LLM workloads is an
+active area \citep{wilkins2024}. On CPU-only hardware, generation over a
+long retrieved context dominates both latency and energy, which is what gives
+retrieval-skipping its value proposition.
+
+The enabling technology for this entire deployment class is quantisation.
+GGUF-format 4-bit quantised models served by \texttt{llama.cpp}
+\citep{llamacpp} bring a 3B-parameter instruction-tuned model
+\citep{llama3} within the memory and compute budget of a commodity laptop.
+Quantisation, however, is double-edged in this project: it is
+simultaneously the \emph{enabler} of offline deployment and the \emph{cause}
+of the threshold-transfer failure --- the sharply peaked output distributions
+of the quantised model are precisely what pushes its entropy and margin
+statistics outside the range that literature thresholds presuppose
+(Section~\ref{sec:eval-calibration}).
+
+\section{Summary of the Gap}
+\label{sec:bg-gap}
+
+Training-required adaptive retrieval (Self-RAG, Adaptive-RAG, SmartRAG) is
+ruled out by the offline, no-fine-tuning, single-model constraints of
+clinical edge deployment. Training-free gating (TARG) exists but has not been
+evaluated on medical QA, on a quantised small model, under CPU-only cost
+constraints, or with a risk-stratified safety analysis. No published work
+known to the author combines all four. That combination --- and the findings
+it surfaces, several of them negative and none of them visible in aggregate
+accuracy alone --- is the space this dissertation occupies.

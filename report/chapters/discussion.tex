@@ -1,0 +1,135 @@
+% =====================================================================
+%  Chapter 6 — Discussion  (~1,500 words)
+%  DRAFT generated 2026-07-18.
+% =====================================================================
+\chapter{Discussion}
+\label{ch:discussion}
+
+\section{What the Findings Mean Together}
+\label{sec:disc-synthesis}
+
+Read separately, the results of Chapter~\ref{ch:eval} are a mixed report
+card: the gated policy beats always-retrieve but trails closed-book on
+multiple choice, leads on open-ended, and costs more wall-clock time than
+either. Read together, they assemble into a single argument that revises
+what a retrieval gate is for.
+
+The starting observation is that \emph{retrieval is not a free safety net}.
+On questions the model already answers correctly, injecting
+topically-relevant-but-non-decisive context makes it worse at a ratio of
+3.5 broken answers for every one fixed
+(Section~\ref{sec:eval-distraction}). The mechanism is displacement, not
+noise: the model defers to the provided context --- as RAG prompting
+instructs it to --- and abandons parametric knowledge that was correct. The
+standard RAG assumption, that context is at worst neutral, is false for this
+model class.
+
+If retrieval can be poison, then the value of a gate is not primarily
+\emph{efficiency} --- the framing the adaptive-retrieval literature has
+largely adopted --- but \emph{protection}. The sharpest evidence is the
+protective-skip result (Section~\ref{sec:eval-protective}): on precisely the
+questions where retrieval breaks a correct answer, the gate's skip decision
+scored 19/19, its retrieve decision 3/27. The gate's real job, on this
+evidence, is to detect the boundary of the model's parametric knowledge and
+defend everything inside it.
+
+That reframing also resolves the apparent MCQ/open-ended contradiction
+without special pleading. MIRAGE's multiple-choice questions sit largely
+\emph{inside} the 3B model's parametric knowledge, so retrieval can only
+distract and closed-book wins; PubMedQA's research questions sit largely
+\emph{outside} it, so retrieval adds information and the gated policy wins.
+One boundary, two sides, one gate whose task is to tell them apart. Even the
+refuted ablation hypothesis (Section~\ref{sec:eval-ablation}) folds into the
+same picture: probe-boosting variants fail because they retrieve more, and
+on a benchmark where marginal retrievals hurt, the most conservative voting
+rule wins. Three independent analyses --- the paired study, the protective
+skip, and the ablation --- converge on the same conclusion from different
+directions, which is the kind of agreement that survives scrutiny better
+than any single number.
+
+\section{Limitations and Threats to Validity}
+\label{sec:disc-limitations}
+
+The following limitations are stated in full, ordered roughly by how much
+they constrain the conclusions.
+
+\paragraph{Statistical power.} $n=\nQuestions{}$ per condition, one seed, one
+run per configuration. The headline accuracy gap of \diffPfivePone{}pp
+carries a 95\% CI of \diffPfivePoneCI{}, which crosses zero: this study is
+\emph{not powered to establish the accuracy claim}, and the abstract and
+conclusion phrase it accordingly (``consistent with an improvement''). The
+retrieval-cost halving is a count and is exact for this sample. The
+high-risk stratum ($n=6$, Wilson CIs $\approx \pm 30$pp) supports no
+between-policy comparison at all.
+
+\paragraph{Single model.} Every result rests on one quantised
+Llama-3.2-3B. ``Calibration does not transfer'' and ``selective beats
+always'' are single-model observations until replicated on a second model.
+The replication prerequisites are built and verified
+(Section~\ref{sec:impl-backend}) but the run had not completed at the time
+of writing.
+% NOTE: if the Qwen-7B run lands, update this paragraph and §5.10.
+
+\paragraph{Hardware tiers not physically benchmarked.} The tier-adaptive
+degradation mechanism is implemented and unit-tested, but only the medium
+tier was actually run. The original project plan promised physical
+benchmarking on three device classes; what was delivered is the mechanism
+plus single-tier measurements, and this dissertation does not imply
+otherwise.
+
+\paragraph{Benchmark narrowness.} MCQ evaluation uses one MIRAGE subset
+(MMLU-Med); open-ended evaluation uses PubMedQA only, after the originally
+planned dataset proved unreachable. MIRAGE is entirely multiple-choice,
+which is precisely why the open-ended complement matters --- but one dataset
+per question type limits generality.
+
+\paragraph{Metric limits.} Token-level $F_1$ between paragraph-length
+answers is harsh in absolute terms; the reported values (0.19--0.22) support
+\emph{relative} comparison between policies, not absolute quality claims.
+Energy figures are \texttt{codecarbon} software estimates, not hardware
+power measurements.
+
+\paragraph{Risk tagger.} The clinical-risk tagger is a keyword rule set ---
+chosen deliberately for auditability, since a learned classifier would
+obscure the basis of a safety-relevant label and no training data exists ---
+but it has recall gaps on implicitly high-risk questions. That gap is partly
+\emph{why} the high-risk stratum is only $n=6$: the tagger finds explicit
+dosing/interaction cues, not subtle criticality.
+
+\paragraph{Stipulated safety bars.} The 70/80/90\% bars are stipulated, not
+derived from clinical evidence. Different bars would move the envelope's
+edges, though at current accuracy no defensible bar would be met.
+
+\section{Implications for Offline Clinical Deployment}
+\label{sec:disc-deployment}
+
+What should a practitioner take from this work?
+
+\paragraph{Do not deploy at this scale.} The unambiguous first implication:
+a quantised 3B model, gated or not, is \gapToLowBar{}pp short of even the
+lowest stipulated bar, and the safety envelope is empty. This system --- and
+by extension the current generation of fully offline, CPU-only clinical QA
+at this model size --- is not fit for clinical decision support, and the
+honest output of the evaluation is the measured distance rather than a
+product. Publishing that distance is the responsible finding.
+
+\paragraph{Where the method is useful today.} The gating approach earns its
+keep wherever retrieval is the expensive or risky resource and the model's
+self-knowledge is exploitable: cost-aware routing in on-premises deployments
+under data-sovereignty constraints, edge devices where a metered or slow
+retrieval backend dominates cost, and any pipeline where the operator wants
+an auditable, per-query record of \emph{why} the system did or did not
+consult external evidence. The gate's decision payload --- signals, votes,
+thresholds --- is logged per query, which makes the retrieval decision
+reviewable after the fact in a way end-to-end trained routers are not.
+
+\paragraph{Interpretability as the deployable asset.} The per-token entropy
+attribution (Section~\ref{sec:eval-attribution}) points at what may matter
+more than a small accuracy delta in regulated settings: surfacing
+\emph{where} the model was uncertain. The honest caveat travels with it ---
+on this model, raw entropy highlights phrasing rather than clinical content,
+so attribution is a promising direction with a demonstrated limitation, not
+a finished feature. In a domain where automation bias is a documented harm
+(Chapter~\ref{ch:lsep}), an uncertainty display that clinicians can audit is
+plausibly worth more than two points of accuracy; building and validating
+one is future work.

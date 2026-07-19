@@ -1,0 +1,100 @@
+% =====================================================================
+%  Appendix — Reproducibility Artefacts (not counted in the word budget)
+%  DRAFT generated 2026-07-18. VERIFY every command against the repo.
+% =====================================================================
+\chapter{Reproducibility Artefacts}
+\label{app:repro}
+
+\section{Run Commands}
+\label{app:commands}
+
+Each experiment is fully specified by a configuration file plus explicit
+index paths. Representative commands:
+% VERIFY flags against scripts/run_experiment.py --help before submission.
+
+\begin{lstlisting}[language=bash,caption={Main MCQ runs on the real corpus.}]
+python scripts/run_experiment.py \
+  --config configs/experiments/mirage_medcorp.yaml \
+  --bm25-index indexes/bm25_medcorp_tp.pkl \
+  --faiss-index indexes/faiss_medcorp_tp
+python scripts/run_experiment.py \
+  --config configs/experiments/mirage_p5_calibrated.yaml \
+  --bm25-index indexes/bm25_medcorp_tp.pkl \
+  --faiss-index indexes/faiss_medcorp_tp
+\end{lstlisting}
+
+\begin{lstlisting}[language=bash,caption={Corpus build (resumable, shard-checkpointed).}]
+python scripts/build_medcorp.py --sources textbooks pubmed \
+  --limit-pubmed 300000 --name medcorp_tp
+\end{lstlisting}
+
+\begin{lstlisting}[language=bash,caption={Offline analyses (no model calls).}]
+python scripts/run_threshold_sweep.py    # calibration replay
+python scripts/run_gate_ablation.py      # signal agreement / swing
+python scripts/run_gate_variants.py      # voting-rule sweep
+python scripts/analyse_chunk_relevance.py
+python scripts/generate_tables.py        # numbers.tex + tables
+python scripts/generate_figures.py       # all figures
+\end{lstlisting}
+
+\section{Run Record Schema}
+\label{app:schema}
+
+One annotated JSONL record (abridged):
+
+\begin{lstlisting}[caption={RunRecord example.},basicstyle=\ttfamily\scriptsize]
+{
+  "question_id": "mmlu-anatomy-020",
+  "policy": "p5_gated",
+  "answer_text": "...",
+  "is_correct": true,
+  "risk_level": "medium",
+  "retrieved": false,
+  "latency_s": 148.2,
+  "energy_kwh": 0.0011,
+  "qvault": {
+    "gate_details": {
+      "decision": "skip",
+      "votes": {"entropy": "skip", "margin": "skip", "probe": "retrieve"},
+      "entropy_mean": 0.61,
+      "margin_mean": 0.74,
+      "per_token_entropy": [0.02, 1.31, "..."],
+      "probe_drafts": ["...", "..."]
+    },
+    "retrieved_chunks": []
+  }
+}
+\end{lstlisting}
+
+Raw logs are append-only and never mutated; all re-scoring happens in memory
+at load time via the canonical loader (\texttt{evaluation/loading.py}).
+
+\section{Test Inventory}
+\label{app:tests}
+
+184 tests pass at the time of writing
+% VERIFY with: pytest -q
+spanning unit (configuration, retrieval, gates, policies, scoring, metrics),
+integration (open-ended path end-to-end), and regression suites (number
+drift guard; P3 paired-run corpus independence). The suite runs without the
+model or any dataset download via \texttt{MockLLMBackend}:
+
+\begin{lstlisting}[language=bash]
+python -m pytest -q          # full suite, ~seconds, no model required
+\end{lstlisting}
+
+\section{Corpus and Index Parameters}
+\label{app:corpus}
+
+\begin{itemize}
+  \item Sources: MedRAG/textbooks (\(\sim\)126K snippets) + MedRAG/pubmed
+    slice (300{,}000 snippets); total \textbf{425{,}847 chunks}.
+  \item Embedding: \texttt{all-MiniLM-L6-v2}, 384-d, L2-normalised;
+    shard-checkpointed (2{,}000 chunks/shard).
+  \item Indexes: FAISS \texttt{IndexFlatIP} (654\,MB, exact) and BM25
+    (787\,MB).
+  \item Model: Llama-3.2-3B-Instruct Q4\_K\_M (GGUF), \texttt{llama.cpp},
+    CPU-only, temperature 0, fixed seed.
+  \item Calibrated gate thresholds: \(\tau_H = \tau_M = 0.70\);
+    probe agreement threshold \(F_1 = 0.7\); ensemble \(v_{\min} = 2\).
+\end{itemize}

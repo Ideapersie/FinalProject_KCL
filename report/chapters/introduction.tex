@@ -1,0 +1,158 @@
+% =====================================================================
+%  Chapter 1 — Introduction  (~1,500 words)
+%  DRAFT generated 2026-07-18. Re-read in your own voice before submission;
+%  every number is either a \macro from numbers.tex or marked with a comment.
+% =====================================================================
+\chapter{Introduction}
+\label{ch:intro}
+
+\section{Motivation}
+\label{sec:intro-motivation}
+
+Retrieval-augmented generation (RAG) has become the default engineering answer
+to a well-known failure of large language models: they hallucinate. Ground the
+model in retrieved documents, the argument runs, and its answers inherit the
+reliability of the source material. In consumer applications this is a
+reasonable default. In medicine it is not, for three reasons that together
+motivate this dissertation.
+
+The first is \emph{safety}. A hallucinated drug interaction is not merely a
+wrong answer; in a deployed clinical tool it is a potential clinical incident.
+Closed-book generation --- answering purely from the model's parametric
+knowledge --- is therefore never a neutral choice in this domain: it trades
+latency for an unbounded and invisible hallucination risk, with no provenance
+trail a clinician could audit. Any system intended even for clinical
+\emph{education} must take a position on when parametric knowledge alone is
+trustworthy.
+
+The second is \emph{cost}. On the hardware this project targets, retrieval is
+not free. A retrieving query on the CPU-only reference configuration takes on
+the order of \latPoneMcq{} of wall-clock time, dominated by the long-context
+generation over the retrieved passages; a closed-book answer to the same
+question takes a fraction of that. Multiplied over every query in a working
+day, always-retrieve is a substantial and often unnecessary expenditure of
+time and energy.
+
+The third is \emph{deployment reality}. The intended setting for this work is
+offline, CPU-only hardware: hospital training wards, rural clinics, hospitals
+in low- and middle-income countries, and air-gapped environments where data
+governance forbids sending clinical text to a third-party API. There is no
+cloud model to call and no GPU to accelerate retrieval-augmented inference.
+Every design decision in this project --- a 4-bit quantised 3B-parameter
+model, exact CPU-side vector search, energy profiling --- follows from taking
+this constraint seriously rather than treating it as an afterthought.
+
+These three pressures converge on a single question that is usually skipped:
+\emph{retrieval is neither free nor always helpful --- so when should a
+clinical question-answering system actually retrieve?}
+
+\section{Problem Statement}
+\label{sec:intro-problem}
+
+The two degenerate retrieval policies bracket the problem, and both fail.
+
+\emph{Always-retrieve} maximises cost, and --- as this dissertation
+demonstrates empirically --- it can also \emph{reduce} accuracy. On
+multiple-choice medical questions, injecting retrieved context broke 46
+previously-correct answers and fixed only 13 (Chapter~\ref{ch:eval}):
+retrieval actively distracts a model that already knew the answer. The
+assumption that retrieved context is at worst neutral does not survive contact
+with the data.
+
+\emph{Closed-book} minimises cost but offers no provenance and no bound on
+hallucination. Its failures are silent: the model produces a fluent answer
+whether or not the underlying knowledge exists, and a reader has no signal to
+distinguish the two cases.
+
+The gap between these extremes is a \emph{per-query} decision: retrieve
+exactly when the model does not already know. Making that decision in this
+deployment setting carries two hard constraints. It must be
+\emph{training-free}, because no labelled ``should-retrieve'' dataset exists
+for medicine and fine-tuning the generator (as reflection-token approaches
+require) is infeasible offline on CPU. And it must require \emph{no second
+model}, because the compute budget is a single quantised 3B model on a
+laptop. The remaining option --- the one this dissertation develops and
+evaluates --- is to gate retrieval on signals the model already emits during
+generation: the entropy of its token distributions, the margin between its top
+candidates, and the stability of its answer under reframing.
+
+\section{Research Questions}
+\label{sec:intro-rqs}
+
+The evaluation in Chapter~\ref{ch:eval} is organised around four research
+questions, each of which the collected data can actually answer:
+
+\begin{description}
+  \item[RQ1] How do always-retrieve, hybrid, closed-book and gated retrieval
+    policies compare on accuracy, retrieval cost and latency for medical
+    question answering on CPU-only hardware?
+  \item[RQ2] Do training-free gating signals (token entropy, logit margin,
+    answer-stability probing) and their published operating thresholds
+    transfer from the general-domain literature to a small quantised medical
+    model?
+  \item[RQ3] Does an ensemble of three signals outperform its individual
+    members, and if so, why?
+  \item[RQ4] How far is the best achievable policy from clinically acceptable
+    accuracy at each level of question risk --- the \emph{safety envelope}?
+\end{description}
+
+% NOTE: the original plan's hardware-tier RQ is deliberately absent — tiers
+% were implemented but not physically benchmarked; see §6.2.
+
+\section{Contributions}
+\label{sec:intro-contributions}
+
+This dissertation makes six contributions, each anchored to specific evidence:
+
+\begin{enumerate}
+  \item \textbf{A training-free retrieval-gating ensemble.} Three signals ---
+    mean token entropy, mean top-two logit margin, and a two-draft
+    hallucination probe --- combined by majority vote, requiring no
+    fine-tuning, no labelled gate data, and no auxiliary model
+    (Chapter~\ref{ch:method}).
+  \item \textbf{Calibration non-transfer.} Literature-default thresholds
+    ($\tau_H = 2.5$ nats, $\tau_M = 0.3$) are shown to be \emph{physically
+    unreachable} on a 4-bit quantised 3B model, whose observed entropy spans
+    0.27--1.59 nats and margin 0.45--0.89. Gate thresholds must be
+    recalibrated per model; an offline replay procedure does so in seconds
+    (Section~\ref{sec:eval-calibration}).
+  \item \textbf{Retrieval as distraction.} On multiple-choice questions over a
+    426K-chunk medical corpus, retrieval breaks 46 previously-correct answers
+    and fixes 13 (net $-16.5$pp). Retrieved chunks are equally on-topic in
+    both groups but $2.4\times$ less answer-bearing where retrieval harms:
+    the failure mode is distraction by relevant-but-not-decisive context, not
+    retriever error (Section~\ref{sec:eval-distraction}).
+  \item \textbf{The protective skip.} On exactly those retrieval-poisoned
+    questions, the gate's \textsc{skip} decision scored 19/19 (100\%); its
+    \textsc{retrieve} decision, 3/27 (11\%). The gate is protective precisely
+    where retrieval is harmful (Section~\ref{sec:eval-protective}).
+  \item \textbf{The safety envelope.} A risk-stratified analysis quantifying
+    the \emph{distance} between this system and clinical acceptability: the
+    best policy on the benchmark falls \gapToLowBar{}pp short of the
+    \barLow{} low-risk bar. The contribution is an honest measurement of that
+    distance, not a claim of clinical readiness
+    (Section~\ref{sec:eval-envelope}).
+  \item \textbf{A reproducible evaluation harness.} Every reported number is
+    generated from raw run logs into \LaTeX{} macros, guarded by a regression
+    test that fails the build on a hand-edited literal; 180+ unit tests run
+    without the model via a mock backend; runs are resumable and
+    deterministic (Chapter~\ref{ch:impl}).
+\end{enumerate}
+
+\section{Dissertation Structure}
+\label{sec:intro-structure}
+
+Chapter~\ref{ch:background} situates the work among adaptive-retrieval
+methods, medical RAG benchmarks and the uncertainty-signal literature, and
+states the four-part gap this project occupies. Chapter~\ref{ch:method}
+presents the system design: the policy space, the retrieval stack, and the
+three-gate ensemble with its hardware-aware degradation.
+Chapter~\ref{ch:impl} documents the implementation, with particular attention
+to the reproducibility machinery. Chapter~\ref{ch:eval} reports the
+evaluation: the main policy comparison, the calibration study, the
+distraction and protective-skip analyses, the gate ablation, token-level
+entropy attribution, and the safety envelope. Chapter~\ref{ch:discussion}
+synthesises the findings and confronts their limitations.
+Chapter~\ref{ch:lsep} addresses the legal, social, ethical and professional
+dimensions of deploying (or declining to deploy) such a system.
+Chapter~\ref{ch:conclusion} concludes and orders the future work by value.

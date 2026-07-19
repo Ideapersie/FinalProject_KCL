@@ -1,0 +1,250 @@
+% =====================================================================
+%  Chapter 3 — Methodology and System Design  (~2,500 words)
+%  DRAFT generated 2026-07-18. Re-threaded from week2_gating.tex — sprint
+%  framing removed, equations preserved. Needs: architecture figure
+%  (fig placeholder marked below).
+% =====================================================================
+\chapter{Methodology and System Design}
+\label{ch:method}
+
+\section{Design Overview}
+\label{sec:method-overview}
+
+The system is organised as a six-layer pipeline: configuration, data
+contracts, data ingestion, models and retrieval, policies and gating, and
+evaluation. One design principle governs the whole structure: \emph{each
+layer depends only on the layers beneath it and communicates exclusively
+through shared, typed dataclasses}. The practical consequence is that every
+component can be unit-tested in isolation against mock collaborators, and the
+retrieval gates --- the core novel contribution --- were developed against a
+stable, test-covered substrate rather than a moving target. The same
+discipline is what later makes the evaluation trustworthy: because every
+policy emits an identical, fully populated record per query, analyses such as
+the paired retrieval-distraction study (Section~\ref{sec:eval-distraction})
+can be run entirely from logs, without re-invoking the model.
+
+% TODO(figure): architecture diagram of the six layers. Suggest generating
+% with TikZ or exporting a simple diagram; place as fig:architecture.
+%\begin{figure}[t]
+%  \centering
+%  \includegraphics[width=0.8\linewidth]{results/figures/fig_architecture}
+%  \caption{The six-layer system architecture.}
+%  \label{fig:architecture}
+%\end{figure}
+
+\section{The Policy Space}
+\label{sec:method-policies}
+
+A \emph{policy} is a complete answering strategy: given a question, it decides
+what (if anything) to retrieve and produces an answer. All policies implement
+a single method, \texttt{answer(question) $\rightarrow$ PolicyResult}, so the
+run driver is agnostic to which policy it holds --- the precondition for a
+fair comparative experiment. Five policies span the design space
+(Table~\ref{tab:setup}):
+
+\input{../results/tables/tab_setup}
+
+\begin{itemize}
+  \item \textbf{P1 (always-retrieve)} retrieves for every query and answers
+    with the evidence in context. It is the cost ceiling and the conventional
+    RAG baseline.
+  \item \textbf{P2 (always-retrieve with citations)} additionally asks the
+    model to name its sources; cited titles are matched leniently back to
+    retrieved chunks, and invented citations are dropped rather than counted.
+  \item \textbf{P3 (closed-book)} never retrieves: the parametric-knowledge
+    reference point and the cost floor.
+  \item \textbf{P4 (hybrid)} is P1 bound to the hybrid (rank-fusion)
+    retriever rather than BM25 alone.
+  \item \textbf{P5 (gated)} --- the proposed method --- consults the gate
+    ensemble per query and behaves like P1 on \textsc{retrieve} and like P3 on
+    \textsc{skip}.
+\end{itemize}
+
+Two policies from the original project plan were deliberately scoped out: a
+user-facing retrieval toggle (P6) and a multi-agent variant (P7). Both add
+breadth without informing the central question --- when a system
+\emph{should} retrieve --- and the evaluation depth spent instead on paired
+analyses and ablations (Chapter~\ref{ch:eval}) proved the better trade.
+
+\section{Retrieval}
+\label{sec:method-retrieval}
+
+Three retrievers are implemented behind a common interface, selected by
+configuration rather than code change.
+
+\paragraph{Lexical (BM25).} BM25 \citep{robertson2009bm25} scores documents
+by weighted lexical overlap. It requires no embedding model, no vector index
+and no GPU --- the only retriever viable on the lowest hardware tier --- and
+medical terminology is specific enough that exact lexical match is a strong
+signal (drug names, dosages, anatomical terms).
+
+\paragraph{Dense (vector).} Each corpus chunk is embedded once with
+\texttt{all-MiniLM-L6-v2} \citep{reimers2019} (384 dimensions) and indexed
+in a FAISS \texttt{IndexFlatIP} \citep{johnson2019faiss}. Embeddings are
+L2-normalised, so inner product equals cosine similarity; the index is exact
+(brute-force), so retrieval is deterministic and needs no training --- a
+reproducibility choice made deliberately, accepting linear-scan cost in
+exchange for run-to-run identical rankings. Dense retrieval catches the
+paraphrase cases BM25 misses: a query about a \emph{heart attack} matching a
+passage that only says \emph{myocardial infarction}.
+
+\paragraph{Hybrid (RRF).} The two retrievers have complementary strengths,
+and their scores live on incomparable scales. Reciprocal Rank Fusion merges
+them scale-free by fusing \emph{ranks}:
+\begin{equation}
+  \mathrm{score}(d) \;=\; \sum_{i \in \{\text{bm25},\,\text{vec}\}}
+  \frac{1}{k + \mathrm{rank}_i(d)}, \qquad k = 60,
+  \label{eq:rrf}
+\end{equation}
+where $\mathrm{rank}_i(d)$ is the 1-based rank of document $d$ under
+retriever $i$. Documents ranked highly by both rise to the top; no score
+normalisation is ever required. The damping constant $k=60$ is the standard
+value and is exposed in configuration.
+
+\section{The Gate Ensemble}
+\label{sec:method-gates}
+
+\subsection{Why Three Signals}
+\label{sec:method-why-three}
+
+A single uncertainty signal is fragile. Token entropy is inflated by benign
+lexical variation on questions the model actually knows; the logit margin is
+large on a confidently \emph{wrong} answer; self-reported confidence is
+poorly calibrated in small models (Section~\ref{sec:bg-calibration}). Each
+signal has a characteristic failure mode under which it would gate
+incorrectly. The design response is an ensemble of three signals derived from
+\emph{different} aspects of the model's behaviour --- distributional spread,
+decision-boundary decisiveness, and cross-framing stability --- combined by
+majority vote so that no single failure mode dominates.
+
+The framing is safety-asymmetric by intent: an unnecessary retrieval costs
+seconds of latency; a confidently wrong closed-book answer in a clinical
+setting costs far more. The ensemble is therefore deliberately biased toward
+retrieving when the signals disagree. The evaluation partially
+\emph{complicates} this design story --- the ablation in
+Section~\ref{sec:eval-ablation} finds that the probe over-triggers retrieval
+and the flat majority vote is what protects the ensemble from it --- and that
+result is reported there rather than smoothed over here: the design was
+reasoned in advance, then tested, and the test taught something the
+reasoning had not.
+
+\subsection{Gate 1: Token Entropy}
+\label{sec:method-gate-entropy}
+
+The entropy gate generates a short draft answer (48 tokens) without retrieval
+and measures uncertainty from the full-vocabulary distribution at each
+generated position. For generated token $t$ with softmax distribution $p_t$
+over vocabulary $V$, the per-token Shannon entropy (nats) and gate signal are
+\begin{align}
+  H(p_t) &= -\sum_{v \in V} p_t(v)\,\log p_t(v), &
+  \bar{H} &= \frac{1}{N}\sum_{t=1}^{N} H(p_t),
+  \label{eq:entropy}
+\end{align}
+and the gate votes \textsc{retrieve} when $\bar{H} > \tau_H$. High mean
+entropy indicates probability mass spread over many continuations --- direct
+lexical-level uncertainty.
+
+Beyond the scalar decision signal, the gate returns the full per-token array
+$\{H(p_t)\}_{t=1}^N$ and propagates it into the audit log. This array is what
+enables the token-level entropy attribution analysis
+(Section~\ref{sec:eval-attribution}): uncertainty can be localised to
+individual tokens of the draft, not merely summarised. The gate requires the
+raw logit buffer (\texttt{logits\_all=true}); where that buffer is
+unavailable it \emph{abstains} rather than fabricating a signal.
+
+\subsection{Gate 2: Logit Margin}
+\label{sec:method-gate-margin}
+
+The margin gate measures decisiveness from the gap between the two most
+probable tokens at each position. For top-two probabilities
+$p_t^{(1)} \ge p_t^{(2)}$,
+\begin{align}
+  m_t &= p_t^{(1)} - p_t^{(2)}, &
+  \bar{M} &= \frac{1}{N}\sum_{t=1}^{N} m_t,
+  \label{eq:margin}
+\end{align}
+and the gate votes \textsc{retrieve} when $\bar{M} < \tau_M$. A small margin
+means the model is torn between near-equiprobable continuations ---
+complementary to entropy, which summarises the whole distribution while the
+margin isolates the decision boundary. Practically, the margin gate reads the
+completion API's top-$k$ log-probabilities rather than the raw logit buffer:
+a lighter dependency that survives \texttt{logits\_all=false}, and one whose
+parser was validated against the real inference library so that the unit-test
+mock is faithful to production output.
+
+\subsection{Gate 3: Hallucination Probe}
+\label{sec:method-gate-probe}
+
+The probe replaces the verbalized-confidence gate of the original design.
+Rather than asking a small model to introspect --- a task at which it is
+unreliable --- it tests whether the model's answer is \emph{stable under
+reframing}. Two drafts are generated from the same question under two prompt
+framings:
+\begin{align*}
+  \text{draft}_A &= \mathcal{M}\bigl(\text{probe}_A(q)\bigr), &
+  \text{draft}_B &= \mathcal{M}\bigl(\text{probe}_B(q)\bigr),
+\end{align*}
+where $\text{probe}_A$ uses an assistant-role framing and $\text{probe}_B$ a
+direct-question framing. For multiple-choice questions the gate compares
+extracted option letters and votes \textsc{retrieve} when they differ; for
+open-ended questions it computes token-level $F_1$ between the drafts and
+votes \textsc{retrieve} when $F_1 < 0.7$. The intuition: genuinely held
+knowledge is invariant to surface framing; a guess is sensitive to it.
+
+The probe is purely text-based --- it never touches the logit buffer --- and
+is therefore the only gate available on the lowest hardware tier. Its cost is
+two extra draft generations per query, which turns out to be the dominant
+term in the gated policy's latency (Section~\ref{sec:eval-cost}); that cost
+is reported honestly rather than amortised away.
+
+\section{Ensemble Voting and Hardware-Aware Degradation}
+\label{sec:method-ensemble}
+
+The gates are combined by majority vote over \emph{available} members. Let
+$g_i \in \{\textsc{retrieve}, \textsc{skip}\}$ be the decision of member $i$
+among the available set
+$A \subseteq \{\text{entropy}, \text{margin}, \text{probe}\}$. The ensemble
+retrieves when
+\begin{equation}
+  \bigl|\{\, i \in A : g_i = \textsc{retrieve} \,\}\bigr| \;\ge\; v_{\min},
+  \qquad v_{\min} = 2 .
+  \label{eq:vote}
+\end{equation}
+Only members reporting themselves available cast votes; an abstaining gate is
+excluded from both the count of retrieve votes and the electorate.
+
+This availability accounting yields a principled \emph{degraded mode}. On the
+low hardware tier only the probe is available, so $v_{\min}=2$ is
+unreachable; the ensemble then falls back to ``retrieve if any available
+member votes retrieve'' and records a \texttt{degraded} flag in the audit
+log. The fallback is enforced at \emph{construction} time: the policy factory
+inspects the model's \texttt{logits\_all} setting and downgrades any
+requested gate to probe-only when the logit buffer is disabled. The gate a
+policy actually runs is therefore constrained by hardware, not merely by
+configuration --- an auditable property.
+
+An honest scope statement belongs here: the degradation \emph{mechanism} is
+implemented and unit-tested, but only the medium hardware tier was physically
+benchmarked in this study. Per-tier latency and energy on real 4\,GB and
+16\,GB devices remain future work
+(Section~\ref{sec:disc-limitations}).
+
+\section{The Safety Envelope}
+\label{sec:method-envelope}
+
+The evaluation's organising concept for clinical acceptability is the
+\emph{safety envelope}. Each question carries a rule-assigned clinical risk
+level (low, medium, high; Section~\ref{sec:impl-config}); each risk level
+carries a stipulated accuracy bar (\barLow{}, \barMedium{}, \barHigh{}
+respectively). For each risk level, the envelope asks: \emph{which is the
+cheapest policy whose accuracy clears the bar?} A policy inside the envelope
+is, by this operationalisation, cheap enough and safe enough to consider for
+that stratum.
+
+The bars are stipulated, not derived from clinical practice --- there is no
+consensus mapping from benchmark accuracy to clinical safety, and this
+dissertation does not pretend to one. The contribution is the \emph{method}
+of asking the question at all, plus the honest answer it returns at this
+model scale: the envelope is empty (Section~\ref{sec:eval-envelope}), and its
+emptiness is a measurement of the distance still to travel, not a failure to
+be hidden.
