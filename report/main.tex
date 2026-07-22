@@ -70,12 +70,31 @@
 \maketitle
 
 \begin{abstract}
-% ~250 words — write LAST (Block 8). Motivation (offline, safety, cost-aware
-% medical RAG); the training-free 3-gate ensemble; the central finding that
-% selective retrieval beats always-retrieve at half the retrieval cost; the
-% honest model-capability ceiling reframed as a quantified distance to clinical
-% safety.
-\emph{[Abstract — to be written in Block 8.]}
+% DRAFT abstract (~250 w), 2026-07-18 — leads with the finding, per feedback.
+Retrieval-augmented generation is the standard remedy for hallucination in
+medical question answering, but this dissertation finds that retrieval is not
+a free safety net: on multiple-choice questions a quantised 3B model already
+answers correctly, retrieved context \emph{broke} 46 answers and fixed only
+13. Selective retrieval is therefore studied not as a cost optimisation but
+as protection. A training-free three-gate ensemble --- mean token entropy,
+top-two logit margin, and a two-draft hallucination probe --- decides per
+query whether to retrieve, requiring no fine-tuning, no labelled data, and no
+second model, targeting fully offline, CPU-only clinical deployments. On 200
+MIRAGE multiple-choice questions over a 425,847-chunk medical corpus, the
+gated policy reaches \accPfiveMcq{} against \accPoneMcq{} for
+always-retrieve at half the retrieval calls (\retPfiveMcq{}); the cost
+halving is exact, while the accuracy gain (\diffPfivePone{}pp, 95\% CI
+\diffPfivePoneCI{}) is suggestive rather than established. On the questions
+retrieval poisons, the gate's skip decision scored 19/19. Three further
+findings shape the conclusions: literature-default gate thresholds are
+physically unreachable on a quantised model and must be recalibrated per
+model; on open-ended PubMedQA the ordering inverts and retrieval helps
+(gated $F_1$ \f1PfiveOpen{} versus closed-book \f1PthreeOpen{}); and no
+policy clears even the \barLow{} low-risk clinical bar --- closed-book tops
+out at \accPthreeMcq{}, quantifying an \gapToLowBar{}pp distance between
+this deployment class and clinical acceptability. All reported numbers are
+generated from raw run logs under a drift-guarded, 180+-test reproducibility
+harness.
 \end{abstract}
 
 % \chapter*{Acknowledgements}  % optional, ~100 words
@@ -89,44 +108,27 @@
 \clearpage
 \pagenumbering{arabic}
 
-% Ch 1 — Introduction (~1,500 w) — NEW, Block 6
-% \input{chapters/introduction}
+\input{chapters/introduction}
+\input{chapters/background}
+\input{chapters/methodology}
+\input{chapters/implementation}
+\input{chapters/evaluation}
+\input{chapters/discussion}
+\input{chapters/lsep}
+\input{chapters/conclusion}
 
-% Ch 2 — Background & Related Work (~2,500 w) — NEW, Block 6
-% \input{chapters/background}
-
-% Ch 3 — Methodology / Design (~2,500 w) — from week2_gating, re-threaded, Block 4
-% \input{chapters/methodology}
-
-% Ch 4 — Implementation (~2,000 w) — from week1 + week3 build parts, Block 4
-% \input{chapters/implementation}
-
-% Ch 5 — Evaluation & Results (~3,000 w) — THE MARKS — Block 3
-%   sources: week3 results + week4_corpus_results + A2 ablation + A3 envelope
-%   + A4 entropy attribution + A5 risk-stratified CIs
-% \input{chapters/evaluation}
-
-% Ch 6 — Discussion (~1,500 w) — NEW, Block 7
-% \input{chapters/discussion}
-
-% Ch 7 — LSEP (~1,200 w) — NEW, Block 7
-% \input{chapters/lsep}
-
-% Ch 8 — Conclusion & Future Work (~900 w) — NEW, Block 8
-% \input{chapters/conclusion}
-
-% --- TEMPORARY: existing sprint-log chapters, kept until re-threaded above ---
-% Remove each \input below as its content migrates into Ch 3/4/5.
-\input{week1_implementation}
-\input{week2_gating}
-\input{week3_policies}
-\input{week4_corpus_results}
+% --- RETIRED: weekN sprint logs, fully re-threaded into the chapters above.
+% Kept in git history; do not \input them (duplicate \label's would clash).
+% \input{week1_implementation}
+% \input{week2_gating}
+% \input{week3_policies}
+% \input{week4_corpus_results}
 
 % ---------------- Back matter ----------------
 \bibliographystyle{plainnat}
 \bibliography{references}
 
-% \appendix
-% \input{chapters/appendix}
+\appendix
+\input{chapters/appendix}
 
 \end{document}
