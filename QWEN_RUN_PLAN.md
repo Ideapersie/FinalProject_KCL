@@ -14,21 +14,39 @@ disconnect.
 
 ## Phase 0 — DO THIS FIRST (do not wait, it is the critical path)
 
-**0.1 Start the corpus upload now.** It is 412 MB and nothing else can proceed
-without it.
-
-Upload `data/corpora/medcorp_tp.jsonl` to Google Drive at exactly:
-
-```
-MyDrive/medrag/data/corpora/medcorp_tp.jsonl
-```
+**0.1 Start the index upload now.** Nothing else can proceed without retrieval data.
 
 Use a **personal Google account**, not the KCL one — Workspace for Education
 accounts frequently block Drive mounting inside Colab, and you do not want to
 discover that at midnight. Everything else in this plan assumes that account.
 
-Upload the corpus only. The prebuilt indexes are 1.8 GB and are cheaper to rebuild
-on the T4 (~25 min) than to transfer.
+**Option A — prebuilt indexes (preferred, 1.81 GB).** Skips the ~25 min on-box
+rebuild *and* skips the assemble stage, which is the only step in the whole setup
+that can run out of RAM. Worth the extra bandwidth if your upload is fast.
+
+```
+MyDrive/medrag/indexes/bm25_medcorp_tp.pkl              (786 MB)
+MyDrive/medrag/indexes/faiss_medcorp_tp/faiss.index     (624 MB)
+MyDrive/medrag/indexes/faiss_medcorp_tp/chunks.pkl      (401 MB)
+```
+
+Do **not** upload `indexes/faiss_medcorp_tp/_shards/` — 213 files, 639 MB of embed
+checkpoints used only when rebuilding. The corpus JSONL is not needed either:
+`chunks.pkl` already carries the chunk text (`vector_retriever.py` reads exactly
+`faiss.index` + `chunks.pkl`).
+
+**Option B — corpus only (fallback, 412 MB).** Cheaper upload, costs ~25 min of GPU
+rebuild and carries the OOM risk:
+
+```
+MyDrive/medrag/data/corpora/medcorp_tp.jsonl
+```
+
+The notebook detects which you supplied and takes the right path. Uploading both is
+fine — A wins.
+
+Note `data/corpora/pilot_corpus.jsonl` (0.1 MB, 200 chunks) is the **old pilot
+corpus** that produced P1=17%. Do not upload it and do not point any run at it.
 
 **0.2 While it uploads — push the repo.** This is the blocker that would otherwise
 waste the whole evening: **Colab clones from GitHub**, and every Qwen prerequisite
@@ -70,20 +88,19 @@ Open `notebooks/colab_scaling.ipynb` in Colab. Run cells in order.
 | Step | Cell | What it does | Expected |
 |---|---|---|---|
 | 1 | GPU check | `nvidia-smi` | **T4, ~15 GB free.** No GPU → Runtime → Change runtime type → T4 |
-| 2 | Mount Drive | mounts + asserts corpus present | corpus ~412 MB |
+| 2 | Mount Drive | detects prebuilt indexes vs corpus | `prebuilt indexes on Drive: True` |
 | 3 | Clone + install | CUDA build of llama-cpp | `llama-cpp-python 0.3.28`, GPU offload `True` |
 | 4 | Model download | resolves the real GGUF filename, then downloads | ~4.5 GB, cached to Drive |
-| 5 | Index rebuild | embeds 426K chunks on GPU, builds FAISS + BM25 | ~25 min, cached to Drive |
+| 5 | Indexes onto box | copies prebuilt (~2 min) **or** rebuilds (~25 min) | three files, sizes printed |
 
 **Watch for:**
 
 - **GPU offload `False`** → the CUDA build fell back to CPU. Re-run the install cell.
   Do not continue; CPU would take days.
-- **Assemble stage OOM** (step 5). Colab free has ~12.7 GB RAM and the assemble stage
-  holds embeddings + chunks + BM25 at once. It fits on your 8 GB laptop so it should
-  fit here, but if it dies: Runtime → Change runtime type → High-RAM (Pro only), or
-  upload the prebuilt `indexes/` from your machine instead and let the restore path
-  pick them up.
+- **Assemble stage OOM** — only possible on option B. Colab free has ~12.7 GB RAM and
+  the assemble stage holds embeddings + chunks + BM25 at once. It fits on your 8 GB
+  laptop so it should fit here, but if it dies: upload the prebuilt indexes
+  (option A) and re-run. Option A cannot hit this at all.
 - The install pins **llama-cpp-python 0.3.28** deliberately. The entropy gate reads
   `_scores`, a semi-private attribute, and the margin gate needs `logprobs=2`. A newer
   release that moves either one does not raise — the gates return `None` and P5 quietly
@@ -226,7 +243,8 @@ Every result is publishable whichever way it lands — say so in the chapter.
 ## Abort rules
 
 - **Smoke test fails** → stop. Do not burn the night on a broken pipeline.
-- **Index rebuild OOMs twice** → stop, upload prebuilt indexes tomorrow instead.
+- **Index rebuild OOMs twice** (option B only) → switch to option A, upload the
+  prebuilt indexes and re-run step 5.
 - **Not started by ~01:00** → stop. A finished single-model thesis beats a half-run
   two-model one. Delete Ch5 §5.10 and caveat in Discussion.
 - **Hard cutoff: 27 July.** If Qwen is not done and analysed by then, cut it entirely
