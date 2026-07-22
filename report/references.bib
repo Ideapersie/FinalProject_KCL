@@ -1,18 +1,26 @@
 % =====================================================================
 %  references.bib — dissertation bibliography
-%  Keys are stable; fill in any [TODO verify] fields against the actual
-%  paper before final submission. Only cite what is actually used.
+%  Rewritten 2026-07-18 from the stub. Keys match the chapter citations.
+%  Entries marked [VERIFY] have fields written from memory — check each
+%  against the actual paper (Google Scholar / DBLP) before final submission.
 % =====================================================================
 
-% ---- Adaptive / selective retrieval ----
-@article{targ2025,
-  title   = {{TARG}: Token-level Adaptive Retrieval Gating},
-  author  = {[TODO authors]},
-  journal = {arXiv preprint},
-  year    = {2025},
-  note    = {arXiv:2025.xxxxx [TODO verify id]}
+% ---- RAG foundations ----
+@inproceedings{lewis2020rag,
+  title     = {Retrieval-Augmented Generation for Knowledge-Intensive {NLP} Tasks},
+  author    = {Lewis, Patrick and Perez, Ethan and Piktus, Aleksandra and Petroni, Fabio and Karpukhin, Vladimir and Goyal, Naman and K{\"u}ttler, Heinrich and Lewis, Mike and Yih, Wen-tau and Rockt{\"a}schel, Tim and Riedel, Sebastian and Kiela, Douwe},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2020}
 }
 
+@article{gao2023ragsurvey,
+  title   = {Retrieval-Augmented Generation for Large Language Models: A Survey},
+  author  = {Gao, Yunfan and Xiong, Yun and Gao, Xinyu and Jia, Kangxiang and Pan, Jinliu and Bi, Yuxi and Dai, Yi and Sun, Jiawei and Wang, Meng and Wang, Haofen},
+  journal = {arXiv preprint arXiv:2312.10997},
+  year    = {2023}
+}
+
+% ---- Adaptive / selective retrieval ----
 @inproceedings{selfrag2024,
   title     = {Self-{RAG}: Learning to Retrieve, Generate, and Critique through Self-Reflection},
   author    = {Asai, Akari and Wu, Zeqiu and Wang, Yizhong and Sil, Avirup and Hajishirzi, Hannaneh},
@@ -23,47 +31,146 @@
 @inproceedings{adaptiverag2024,
   title     = {Adaptive-{RAG}: Learning to Adapt Retrieval-Augmented Large Language Models through Question Complexity},
   author    = {Jeong, Soyeong and Baek, Jinheon and Cho, Sukmin and Hwang, Sung Ju and Park, Jong C.},
-  booktitle = {Proceedings of NAACL-HLT},
+  booktitle = {Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics (NAACL)},
   year      = {2024}
 }
 
-% ---- Medical RAG benchmark ----
-@article{mirage2024,
-  title   = {Benchmarking Retrieval-Augmented Generation for Medicine},
-  author  = {Xiong, Guangzhi and Jin, Qiao and Lu, Zhiyong and Zhang, Aidong},
-  journal = {Findings of ACL},
-  year    = {2024},
-  note    = {MIRAGE benchmark / MedRAG toolkit}
+@inproceedings{smartrag2025,
+  title     = {{SmartRAG}: Jointly Learn {RAG}-Related Tasks From the Environment Feedback},
+  author    = {Gao, Jingsheng and Li, Linxu and Li, Weiyuan and Fu, Yuzhuo and Dai, Bin},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2025},
+  note      = {[VERIFY authors/venue]}
+}
+
+@article{targ2025,
+  title   = {{TARG}: Training-Free Adaptive Retrieval Gating for Efficient {RAG}},
+  author  = {[VERIFY authors]},
+  journal = {arXiv preprint arXiv:2511.09803},
+  year    = {2025},
+  note    = {[VERIFY id 2511.09803 and title against the paper cited in the project plan]}
+}
+
+@inproceedings{mallen2023,
+  title     = {When Not to Trust Language Models: Investigating Effectiveness of Parametric and Non-Parametric Memories},
+  author    = {Mallen, Alex and Asai, Akari and Zhong, Victor and Das, Rajarshi and Khashabi, Daniel and Hajishirzi, Hannaneh},
+  booktitle = {Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (ACL)},
+  year      = {2023}
+}
+
+% ---- Medical QA / benchmarks ----
+@inproceedings{mirage2024,
+  title     = {Benchmarking Retrieval-Augmented Generation for Medicine},
+  author    = {Xiong, Guangzhi and Jin, Qiao and Lu, Zhiyong and Zhang, Aidong},
+  booktitle = {Findings of the Association for Computational Linguistics: ACL 2024},
+  year      = {2024},
+  note      = {MIRAGE benchmark / MedRAG toolkit}
+}
+
+@inproceedings{jin2019pubmedqa,
+  title     = {{PubMedQA}: A Dataset for Biomedical Research Question Answering},
+  author    = {Jin, Qiao and Dhingra, Bhuwan and Liu, Zhengping and Cohen, William W. and Lu, Xinghua},
+  booktitle = {Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing (EMNLP)},
+  year      = {2019}
+}
+
+@article{singhal2023medpalm,
+  title   = {Large Language Models Encode Clinical Knowledge},
+  author  = {Singhal, Karan and Azizi, Shekoofeh and Tu, Tao and Mahdavi, S. Sara and Wei, Jason and Chung, Hyung Won and others},
+  journal = {Nature},
+  volume  = {620},
+  pages   = {172--180},
+  year    = {2023}
 }
 
 % ---- Citation / attribution evaluation ----
 @inproceedings{alce2023,
   title     = {Enabling Large Language Models to Generate Text with Citations},
   author    = {Gao, Tianyu and Yen, Howard and Yu, Jiatong and Chen, Danqi},
-  booktitle = {Proceedings of EMNLP},
+  booktitle = {Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing (EMNLP)},
   year      = {2023},
   note      = {ALCE}
 }
 
-% ---- Calibration / confidence ----
+% ---- Uncertainty / calibration / confidence ----
+@article{kadavath2022,
+  title   = {Language Models (Mostly) Know What They Know},
+  author  = {Kadavath, Saurav and Conerly, Tom and Askell, Amanda and Henighan, Tom and Drain, Dawn and Perez, Ethan and others},
+  journal = {arXiv preprint arXiv:2207.05221},
+  year    = {2022}
+}
+
+@inproceedings{wang2023selfconsistency,
+  title     = {Self-Consistency Improves Chain of Thought Reasoning in Language Models},
+  author    = {Wang, Xuezhi and Wei, Jason and Schuurmans, Dale and Le, Quoc and Chi, Ed and Narang, Sharan and Chowdhery, Aakanksha and Zhou, Denny},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2023}
+}
+
 @inproceedings{guo2017calibration,
   title     = {On Calibration of Modern Neural Networks},
   author    = {Guo, Chuan and Pleiss, Geoff and Sun, Yu and Weinberger, Kilian Q.},
-  booktitle = {International Conference on Machine Learning (ICML)},
+  booktitle = {Proceedings of the 34th International Conference on Machine Learning (ICML)},
   year      = {2017}
 }
 
-% ---- Quantisation ----
-@article{llamacpp,
-  title  = {llama.cpp: LLM inference in C/C++},
+% ---- Retrieval components ----
+@article{robertson2009bm25,
+  title   = {The Probabilistic Relevance Framework: {BM25} and Beyond},
+  author  = {Robertson, Stephen and Zaragoza, Hugo},
+  journal = {Foundations and Trends in Information Retrieval},
+  volume  = {3},
+  number  = {4},
+  pages   = {333--389},
+  year    = {2009}
+}
+
+@inproceedings{reimers2019,
+  title     = {Sentence-{BERT}: Sentence Embeddings using Siamese {BERT}-Networks},
+  author    = {Reimers, Nils and Gurevych, Iryna},
+  booktitle = {Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing (EMNLP)},
+  year      = {2019}
+}
+
+@article{johnson2019faiss,
+  title   = {Billion-Scale Similarity Search with {GPUs}},
+  author  = {Johnson, Jeff and Douze, Matthijs and J{\'e}gou, Herv{\'e}},
+  journal = {IEEE Transactions on Big Data},
+  volume  = {7},
+  number  = {3},
+  pages   = {535--547},
+  year    = {2019},
+  note    = {FAISS}
+}
+
+% ---- Efficiency / energy ----
+@inproceedings{strubell2019,
+  title     = {Energy and Policy Considerations for Deep Learning in {NLP}},
+  author    = {Strubell, Emma and Ganesh, Ananya and McCallum, Andrew},
+  booktitle = {Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics (ACL)},
+  year      = {2019}
+}
+
+@inproceedings{wilkins2024,
+  title     = {Hybrid Heterogeneous Clusters Can Lower the Energy Consumption of {LLM} Inference Workloads},
+  author    = {Wilkins, Grant and Keshav, Srinivasan and Mortier, Richard},
+  booktitle = {Proceedings of the 3rd Workshop on Sustainable Computer Systems (HotCarbon)},
+  year      = {2024},
+  note      = {[VERIFY title/venue]}
+}
+
+% ---- Models / inference ----
+@misc{llamacpp,
+  title  = {llama.cpp: {LLM} inference in {C/C++}},
   author = {Gerganov, Georgi and {contributors}},
   year   = {2023},
   note   = {\url{https://github.com/ggerganov/llama.cpp}}
 }
 
-@inproceedings{llama3,
-  title     = {The {Llama} 3 Herd of Models},
-  author    = {{Meta AI}},
-  year      = {2024},
-  note      = {Llama-3.2-3B-Instruct}
+@article{llama3,
+  title   = {The {Llama} 3 Herd of Models},
+  author  = {Grattafiori, Aaron and others},
+  journal = {arXiv preprint arXiv:2407.21783},
+  year    = {2024},
+  note    = {Llama-3.2-3B-Instruct}
 }
