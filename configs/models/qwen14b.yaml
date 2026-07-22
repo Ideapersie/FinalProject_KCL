@@ -1,0 +1,44 @@
+# qwen14b.yaml — Qwen2.5-14B-Instruct, the top of the scaling curve.
+#
+# 14B is the largest model that fits a free Colab T4 (16 GB VRAM) at Q4_K_M:
+#   7B  Q4 ~4.5 GB     fits comfortably
+#   14B Q4 ~9.0 GB     fits, with headroom for the embedding model + KV cache
+#   32B Q4 ~19  GB     DOES NOT FIT — would need a paid A100
+#
+# This is also the model most likely to clear the 70% low-risk safety bar for the
+# first time (the 3B tops out at 62.0%). Whether it does or not, the result is
+# informative: it either establishes the scale at which low-risk deployment
+# becomes viable, or it strengthens the model-capability-ceiling finding.
+#
+# Everything except scale is held identical to qwen7b.yaml and the 3B baseline —
+# see the note there on why the quantisation must not change across the curve.
+
+model:
+  name: qwen2.5-14b-instruct
+  gguf_path: models/qwen2.5-14b-instruct-q4_k_m.gguf
+  n_ctx: 4096
+  logits_all: true            # REQUIRED: entropy + margin gates read raw logits
+  temperature: 0.0
+  max_new_tokens: 256
+  verbose: false
+
+  chat_format: qwen           # ChatML — see qwen7b.yaml
+  n_gpu_layers: -1
+
+hardware:
+  tier: high
+  n_threads: 4
+  n_batch: 512
+
+# MEMORY NOTE for the T4 (16 GB):
+#   14B Q4_K_M weights   ~9.0 GB
+#   KV cache @ n_ctx=4096 ~1.5 GB
+#   logits_all buffer     ~1-2 GB   (vocab x n_ctx floats — the price of the gates)
+#   sentence-transformers ~0.5 GB
+#   -------------------------------
+#   ~12-13 GB of 16 GB. Tight but workable.
+#
+# If CUDA OOMs, reduce n_ctx to 2048 first (halves the KV cache and the
+# logits_all buffer). Do NOT disable logits_all — that silently kills the entropy
+# and margin gates and leaves only the probe, which is not the system being
+# evaluated.

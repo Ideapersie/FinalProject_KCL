@@ -1,0 +1,39 @@
+# qwen7b.yaml — Qwen2.5-7B-Instruct, the mid point of the scaling curve.
+#
+# Scaling study (A9): 3B -> 7B -> 14B, holding EVERYTHING else constant. The only
+# variable that may change across these configs is model scale; quantisation,
+# context length, temperature and gate thresholds are deliberately identical, so
+# a difference in the results is attributable to scale and nothing else.
+#
+# Q4_K_M matches the 3B baseline's quantisation. Using a higher-fidelity quant
+# here would confound "bigger model" with "less quantisation" and weaken every
+# claim the curve is meant to support.
+#
+# GPU: n_gpu_layers=-1 offloads all layers. llama-cpp under CUDA still exposes
+# `_scores` (entropy gate) and `logprobs=2` (margin gate), so the gates run
+# unchanged — this is why the backend is not swapped for vLLM/TGI.
+#
+# Usage (Colab):
+#   python scripts/run_experiment.py --model-config configs/models/qwen7b.yaml ...
+
+model:
+  name: qwen2.5-7b-instruct
+  gguf_path: models/qwen2.5-7b-instruct-q4_k_m.gguf
+  n_ctx: 4096                 # 7B handles a larger window than the 3B comfortably
+  logits_all: true            # REQUIRED: entropy + margin gates read raw logits
+  temperature: 0.0            # greedy — reproducibility
+  max_new_tokens: 256
+  verbose: false
+
+  # Qwen2.5 is instruction-tuned on ChatML (<|im_start|>), NOT on Llama's
+  # [INST]. Getting this wrong does not raise — it silently degrades the answers,
+  # and the run would be measuring the prompt rather than the model.
+  chat_format: qwen
+
+  # -1 = every layer on the GPU. Set to 0 to fall back to CPU.
+  n_gpu_layers: -1
+
+hardware:
+  tier: high
+  n_threads: 4                # mostly irrelevant once layers are on the GPU
+  n_batch: 512                # larger batch is worthwhile on a GPU
