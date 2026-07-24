@@ -36,8 +36,13 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-# Console may default to cp1252 on Windows; force UTF-8 so em-dashes print.
-sys.stdout.reconfigure(encoding="utf-8")
+# Console may default to cp1252 on Windows; force UTF-8 so em-dashes print. Guarded
+# because this module is also IMPORTED (e.g. from a notebook), where sys.stdout is an
+# ipykernel OutStream that has no reconfigure().
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except (AttributeError, ValueError):
+    pass
 
 # Model-calibrated grids (observed ranges, not the impossible 1.0–5.0 defaults).
 ENTROPY_GRID = [0.5, 0.7, 0.8, 0.9, 1.0, 1.1, 1.3]
