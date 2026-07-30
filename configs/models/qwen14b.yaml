@@ -30,6 +30,15 @@ hardware:
   n_threads: 4
   n_batch: 512
 
+# Codecarbon energy tracking re-inits per query on Colab (~500 s/query) and
+# tracemalloc adds overhead with no analytic payoff on a GPU run — see the note in
+# qwen7b.yaml. Disable both; keep latency for the p95 comparison. Energy is reported
+# from the 3B CPU runs only.
+profiling:
+  track_energy: false
+  track_memory: false
+  track_latency: true
+
 # MEMORY NOTE for the T4 (16 GB):
 #   14B Q4_K_M weights   ~9.0 GB
 #   KV cache @ n_ctx=4096 ~1.5 GB

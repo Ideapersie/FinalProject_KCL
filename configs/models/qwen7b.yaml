@@ -37,3 +37,15 @@ hardware:
   tier: high
   n_threads: 4                # mostly irrelevant once layers are on the GPU
   n_batch: 512                # larger batch is worthwhile on a GPU
+
+# On Colab the codecarbon energy tracker re-inits per query (hardware probe +
+# network carbon-intensity lookup) and adds ~500 s/query — a diagnostic measured
+# bare 27 s vs energy+memory 536 s. tracemalloc (memory) piles on with no analytic
+# payoff for a GPU run. Both are disabled here; latency stays on (it is the metric
+# that matters for the p95 comparison, and it is cheap). Energy is reported only
+# from the 3B CPU runs, where it was measured and is comparable; Qwen GPU energy on
+# a codecarbon software estimate would not be comparable anyway (state as a limit).
+profiling:
+  track_energy: false
+  track_memory: false
+  track_latency: true
