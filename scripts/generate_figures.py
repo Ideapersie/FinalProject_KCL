@@ -267,6 +267,195 @@ def fig_safety_envelope() -> None:
     _save(fig, "fig_safety_envelope")
 
 
+# ── the scaling arm: Qwen2.5-7B vs Llama-3.2-3B ──────────────────────
+#
+# Two-series categorical palette, fixed order (Llama, Qwen), never cycled.
+# Validated for colour-vision deficiency rather than eyeballed: worst adjacent
+# separation is deutan dE 11.0, normal-vision dE 25.8, both above the floor.
+# The red/green pairing used elsewhere in this file is not CVD-safe and is not
+# reused here.
+C_LLAMA = "#0072B2"   # blue
+C_QWEN = "#D55E00"    # vermillion
+C_TASK_MCQ = "#0072B2"
+C_TASK_OPEN = "#D55E00"
+
+MEMBER_LABEL = {"entropy": "entropy  (fires above $\\tau$)",
+                "margin": "margin  (fires below $\\tau$)",
+                "hallucination_probe": "probe  (fires below $\\tau$)"}
+
+
+def _member_signals(fname: str) -> Dict[str, dict]:
+    """Per-member signal values and threshold, from the ensemble payload.
+
+    Reads `members` rather than `signals` because only the former carries each
+    member's own threshold, and the saturation figure is precisely about where
+    the threshold sits relative to the signal.
+    """
+    out: Dict[str, dict] = {}
+    for rec in load(fname):
+        det = (rec.get("qvault") or {}).get("gate_details") or {}
+        for name, d in (det.get("members") or {}).items():
+            slot = out.setdefault(name, {"sig": [], "tau": None})
+            v = (d.get("mean_entropy") if name == "entropy" else
+                 d.get("mean_margin") if name == "margin" else d.get("f1"))
+            t = (d.get("threshold") if name in ("entropy", "margin")
+                 else d.get("f1_threshold"))
+            if v is not None:
+                slot["sig"].append(float(v))
+            if t is not None:
+                slot["tau"] = float(t)
+    return out
+
+
+def fig_scaling() -> None:
+    """Accuracy against the retrieval budget actually spent, for both models.
+
+    One axis, one measure. The x-position is the realised retrieval rate rather
+    than a policy name, which is what makes the budget mismatch visible: the two
+    P5 points do not sit above one another.
+    """
+    series = [
+        ("Llama-3.2-3B", C_LLAMA, [
+            ("P3", "p3_mirage200.jsonl"),
+            ("P5", "p5_medcorp_mcq.jsonl"),
+            ("P1", "p1_medcorp_mcq.jsonl"),
+        ]),
+        ("Qwen2.5-7B", C_QWEN, [
+            ("P3", "p3_qwen7b_mcq.jsonl"),
+            ("P5", "p5_qwen7b_mcq.jsonl"),
+            ("P1", "p1_qwen7b_mcq.jsonl"),
+        ]),
+    ]
+
+    fig, ax = plt.subplots(figsize=(6.4, 4.0))
+    for label, colour, runs in series:
+        xs, ys = [], []
+        for name, fn in runs:
+            s = aggregate_summary(load(fn))
+            xs.append(100 * s.retrieval_rate)
+            ys.append(100 * s.accuracy)
+            ax.annotate(name, (xs[-1], ys[-1]), textcoords="offset points",
+                        xytext=(0, 9), ha="center", fontsize=8, color="#333333")
+        ax.plot(xs, ys, "-o", color=colour, label=label, linewidth=2,
+                markersize=8, markeredgecolor="white", markeredgewidth=1.5)
+
+    ax.set_xlabel("retrieval budget actually spent (\\% of queries)"
+                  if plt.rcParams["text.usetex"] else
+                  "retrieval budget actually spent (% of queries)")
+    ax.set_ylabel("MCQ accuracy (%)")
+    ax.set_title("Retrieval costs accuracy on this corpus — for both model scales")
+    ax.grid(True, alpha=0.25, linewidth=0.6)
+    ax.set_axisbelow(True)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    ax.legend(fontsize=9, frameon=False)
+    fig.tight_layout()
+    _save(fig, "fig_scaling")
+
+
+def fig_gate_saturation() -> None:
+    """Where each gate's threshold sits relative to the signal it thresholds.
+
+    One panel per member, because the three signals are in different units and
+    must not share an axis. A threshold drawn outside its own range bar is a
+    gate that fires on every question, or on none.
+    """
+    runs = [
+        ("Llama / MCQ", "p5_medcorp_mcq.jsonl", C_LLAMA),
+        ("Llama / open", "p5_medcorp_open.jsonl", C_LLAMA),
+        ("Qwen / MCQ", "p5_qwen7b_mcq.jsonl", C_QWEN),
+        ("Qwen / open", "p5_qwen7b_open.jsonl", C_QWEN),
+    ]
+    members = ["entropy", "margin", "hallucination_probe"]
+
+    fig, axes = plt.subplots(1, 3, figsize=(11, 3.6))
+    for ax, member in zip(axes, members):
+        ypos, labels = [], []
+        for i, (label, fn, colour) in enumerate(runs):
+            st = _member_signals(fn).get(member)
+            y = len(runs) - i
+            ypos.append(y)
+            labels.append(label)
+            if not st or not st["sig"]:
+                ax.text(0.5, y, "threshold-free", transform=ax.get_yaxis_transform(),
+                        va="center", ha="center", fontsize=7, color="#888888",
+                        style="italic")
+                continue
+            lo, hi = min(st["sig"]), max(st["sig"])
+            med = sorted(st["sig"])[len(st["sig"]) // 2]
+            # plot() rather than hlines(): LineCollection has no solid_capstyle,
+            # and a rounded data-end is the house mark spec.
+            ax.plot([lo, hi], [y, y], color=colour, linewidth=6, alpha=0.35,
+                    solid_capstyle="round", zorder=2)
+            ax.plot([med], [y], "o", color=colour, markersize=7,
+                    markeredgecolor="white", markeredgewidth=1.2, zorder=3)
+            if st["tau"] is not None:
+                outside = not (lo <= st["tau"] <= hi)
+                ax.plot([st["tau"]], [y], marker="|", markersize=16, zorder=4,
+                        color="#111111" if not outside else "#B00020",
+                        markeredgewidth=2.2)
+                if outside:
+                    ax.annotate("$\\tau$ outside range", (st["tau"], y),
+                                textcoords="offset points", xytext=(6, 10),
+                                fontsize=7, color="#B00020")
+        ax.set_yticks(ypos)
+        ax.set_yticklabels(labels, fontsize=8)
+        ax.set_title(MEMBER_LABEL[member], fontsize=9)
+        ax.grid(True, axis="x", alpha=0.25, linewidth=0.6)
+        ax.set_axisbelow(True)
+        for side in ("top", "right", "left"):
+            ax.spines[side].set_visible(False)
+        # Fixed y-limits, not autoscale: the probe panel has data on only two of
+        # the four rows, so autoscaling would drop the empty rows off the axes —
+        # taking their tick labels and their "threshold-free" note with them.
+        ax.set_ylim(0.4, len(runs) + 0.6)
+
+    # Identity is not carried by colour alone: every row is labelled on the axis.
+    fig.suptitle("Gate thresholds against the signals they threshold "
+                 "(bar = min–max, dot = median, tick = $\\tau$)", fontsize=10)
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    _save(fig, "fig_gate_saturation")
+
+
+def fig_signal_shift() -> None:
+    """Why an MCQ-fitted threshold cannot be reused on open-ended questions.
+
+    Same model, same gate, two task types. The distributions barely overlap, so a
+    threshold placed on one lands in the wrong part of the other.
+    """
+    panels = [
+        ("Llama-3.2-3B", "entropy", "p5_medcorp_mcq.jsonl", "p5_medcorp_open.jsonl"),
+        ("Llama-3.2-3B", "margin", "p5_medcorp_mcq.jsonl", "p5_medcorp_open.jsonl"),
+        ("Qwen2.5-7B", "entropy", "p5_qwen7b_mcq.jsonl", "p5_qwen7b_open.jsonl"),
+        ("Qwen2.5-7B", "margin", "p5_qwen7b_mcq.jsonl", "p5_qwen7b_open.jsonl"),
+    ]
+    fig, axes = plt.subplots(2, 2, figsize=(9.5, 6.0))
+    for ax, (model, member, mcq_fn, open_fn) in zip(axes.ravel(), panels):
+        mcq = _member_signals(mcq_fn).get(member, {"sig": [], "tau": None})
+        opn = _member_signals(open_fn).get(member, {"sig": [], "tau": None})
+        bins = 18
+        if mcq["sig"]:
+            ax.hist(mcq["sig"], bins=bins, color=C_TASK_MCQ, alpha=0.55,
+                    label="MCQ", density=True)
+        if opn["sig"]:
+            ax.hist(opn["sig"], bins=bins, color=C_TASK_OPEN, alpha=0.55,
+                    label="open-ended", density=True)
+        if mcq["tau"] is not None:
+            ax.axvline(mcq["tau"], color="#111111", linestyle="--", linewidth=1.6,
+                       label=f"$\\tau$ fitted on MCQ = {mcq['tau']:.3f}")
+        ax.set_title(f"{model} — {member}", fontsize=9)
+        ax.set_ylabel("density", fontsize=8)
+        ax.grid(True, alpha=0.25, linewidth=0.6)
+        ax.set_axisbelow(True)
+        for side in ("top", "right"):
+            ax.spines[side].set_visible(False)
+        ax.legend(fontsize=7, frameon=False)
+    fig.suptitle("Gate signals move with the task, so an MCQ-fitted $\\tau$ "
+                 "does not transfer to open-ended", fontsize=10)
+    fig.tight_layout(rect=(0, 0, 1, 0.94))
+    _save(fig, "fig_signal_shift")
+
+
 def main() -> None:
     fig_pareto()
     fig_retrieval()
@@ -275,6 +464,9 @@ def main() -> None:
     fig_corpus_effect()
     fig_medcorp_policies()
     fig_safety_envelope()
+    fig_scaling()
+    fig_gate_saturation()
+    fig_signal_shift()
     print(f"\nFigures written to {FIG}/")
 
 

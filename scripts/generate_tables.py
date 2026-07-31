@@ -24,6 +24,10 @@ ROUNDING — one rule, applied everywhere (a number must not print as 50% in a t
 and 49.5% in a macro):
     percentages  1 d.p.    token-F1  3 d.p.    latency  0 d.p. seconds
 
+MACRO NAMES contain no digits: a LaTeX control sequence is letters only, so
+\f1PfiveOpen parses as \f followed by the text '1PfiveOpen' and fails at both
+definition and use. Token-F1 macros are therefore spelled \fOnePfiveOpen.
+
 Usage:
     python scripts/generate_tables.py
 """
@@ -64,6 +68,50 @@ OPEN = {
     "P5 gated (calib.)":  "p5_medcorp_open.jsonl",
 }
 
+# ── Qwen2.5-7B: the scaling arm ────────────────────────────────────────
+# Identical corpus, identical questions, identical policies; only the model
+# changes, so a difference is attributable to scale and nothing else.
+#
+# Two open-ended P5 runs exist and serve different purposes, DO NOT conflate them:
+#   p5_qwen7b_open_v2.jsonl (n=200) — the PROPER run, open-ended thresholds refitted
+#       to a matched budget (entropy 0.568, margin 0.752, probe f1 0.538). This is
+#       the scaling result.
+#   p5_qwen7b_open.jsonl    (n=35)  — P5-open run using the MCQ thresholds unchanged.
+#       Truncated at 35 because it saturated: every question retrieved (ensemble
+#       100%), P5 collapsed into P1. Kept ONLY as the gate-saturation exhibit, and
+#       any table that prints it must print its n and the "MCQ tau" caveat.
+QWEN_MCQ = {
+    "P1 always-retrieve": "p1_qwen7b_mcq.jsonl",   # graceful-skipped until it lands
+    "P3 closed-book$^\\dagger$": "p3_qwen7b_mcq.jsonl",
+    "P5 gated (recalib.)": "p5_qwen7b_mcq.jsonl",
+}
+QWEN_OPEN = {
+    "P1 always-retrieve": "p1_qwen7b_open.jsonl",  # graceful-skipped until it lands
+    "P3 closed-book$^\\dagger$": "p3_qwen7b_open.jsonl",
+    "P5 gated (recalib.)": "p5_qwen7b_open_v2.jsonl",
+}
+
+# The truncated MCQ-tau open run — saturation evidence only, never the scaling result.
+QWEN_OPEN_SATURATED = "p5_qwen7b_open.jsonl"
+
+# Per-member gate payloads, for the saturation and budget tables. Keyed by the
+# member name used in GateDecision.details["members"]. The two Qwen open rows are
+# the before/after of task-type recalibration: the MCQ-tau run saturates, the
+# refitted run lands on budget.
+GATE_RUNS = [
+    ("Llama-3.2-3B", "MCQ",  "p5_medcorp_mcq.jsonl"),
+    ("Llama-3.2-3B", "open", "p5_medcorp_open.jsonl"),
+    ("Qwen2.5-7B",   "MCQ",  "p5_qwen7b_mcq.jsonl"),
+    ("Qwen2.5-7B",   "open (MCQ $\\tau$)", QWEN_OPEN_SATURATED),
+    ("Qwen2.5-7B",   "open (recalib.)",    "p5_qwen7b_open_v2.jsonl"),
+]
+
+
+def _present(mapping: dict) -> dict:
+    """Drop entries whose log file is not on disk yet (e.g. P1 before it lands),
+    so the tables regenerate cleanly both before and after the runs arrive."""
+    return {k: v for k, v in mapping.items() if (RAW / v).exists()}
+
 
 # ── formatting: the single rounding rule ──────────────────────────────
 
@@ -76,7 +124,10 @@ def f1(x: float) -> str:
 
 
 def secs(x: float) -> str:
-    return f"{x:.0f}\\,s"
+    # 0 d.p. is the house rule, but it prints "0 s" for the GPU closed-book runs
+    # (Qwen P3 MCQ is 0.1 s/question), which reads as a missing measurement rather
+    # than a fast one. Sub-10-second values therefore keep one decimal.
+    return f"{x:.1f}\\,s" if x < 10 else f"{x:.0f}\\,s"
 
 
 def _git_sha() -> str:
@@ -199,6 +250,173 @@ def tab_setup() -> None:
     write("tab_setup.tex", body)
 
 
+# ── scaling arm: Qwen2.5-7B ────────────────────────────────────────────
+
+def _member_stats(records) -> dict:
+    """Per-member gate signal, threshold and fire-rate from the ensemble payload.
+
+    Reads GateDecision.details as the runner copied it into RunRecord.qvault.
+    Each member reports its own signal under its own key, and the fire condition
+    differs by member (entropy fires above tau, margin and probe below), so the
+    comparison has to be done per member rather than generically.
+    """
+    out: dict = {}
+    for rec in records:
+        det = ((rec.get("qvault") or {}).get("gate_details") or {})
+        for name, d in (det.get("members") or {}).items():
+            slot = out.setdefault(name, {"sig": [], "thr": set(), "fire": 0, "n": 0})
+            slot["n"] += 1
+            if name == "entropy":
+                v, t = d.get("mean_entropy"), d.get("threshold")
+                fired = v is not None and t is not None and v > t
+            elif name == "margin":
+                v, t = d.get("mean_margin"), d.get("threshold")
+                fired = v is not None and t is not None and v < t
+            else:
+                v, t = d.get("f1"), d.get("f1_threshold")
+                fired = not d.get("agreement", True)
+            if v is not None:
+                slot["sig"].append(float(v))
+            if t is not None:
+                slot["thr"].add(round(float(t), 3))
+            slot["fire"] += int(bool(fired))
+    return out
+
+
+def tab_scaling_results() -> None:
+    """Both models, both question types — the scaling comparison."""
+    rows = []
+    for model, mcq, opn in [("Llama-3.2-3B", MCQ, OPEN), ("Qwen2.5-7B", QWEN_MCQ, QWEN_OPEN)]:
+        rows.append(f"    \\multicolumn{{6}}{{l}}{{\\textit{{{model}}}}} \\\\")
+        for label, fn in _present(mcq).items():
+            s = aggregate_summary(load_run(RAW / fn))
+            rows.append(f"    \\quad {label} & MCQ & ${s.n}$ & {pct(s.accuracy)} "
+                        f"& {pct(s.retrieval_rate)} & {secs(s.mean_latency_s)} \\\\")
+        for label, fn in _present(opn).items():
+            s = aggregate_summary(load_run(RAW / fn))
+            n_cell = f"${s.n}$" if s.n >= 200 else f"$\\mathbf{{{s.n}}}$"
+            rows.append(f"    \\quad {label} & open & {n_cell} & {f1(s.mean_f1)} "
+                        f"& {pct(s.retrieval_rate)} & {secs(s.mean_latency_s)} \\\\")
+        if model != "Qwen2.5-7B":
+            rows.append("    \\midrule")
+
+    body = f"""\\begin{{table}}[t]
+  \\centering
+  \\begin{{tabular}}{{llcccc}}
+    \\toprule
+    Policy & Type & $n$ & Accuracy / F1 & Retrieval & Latency/q \\\\
+    \\midrule
+{chr(10).join(rows)}
+    \\bottomrule
+  \\end{{tabular}}
+  \\caption{{The scaling arm. Identical corpus, identical questions and identical
+  policy definitions across both models, so a difference is attributable to model
+  scale. Multiple-choice is scored by accuracy, open-ended by mean token-F1.
+  $^{{\\dagger}}$P3 never retrieves and is corpus-independent. The Qwen open-ended
+  P5 row uses thresholds refitted for open-ended drafts (a single global operating
+  point per task type); reusing the multiple-choice thresholds instead saturates the
+  gate (Table~\\ref{{tab:gate-saturation}}). Retrieval budgets are \\emph{{not}}
+  matched across models --- see Table~\\ref{{tab:budget-match}}.}}
+  \\label{{tab:scaling-results}}
+\\end{{table}}
+"""
+    write("tab_scaling_results.tex", body)
+
+
+def tab_gate_saturation() -> None:
+    """Per-member signal ranges against their thresholds — the saturation exhibit."""
+    order = ["entropy", "margin", "hallucination_probe"]
+    pretty = {"entropy": "entropy", "margin": "margin",
+              "hallucination_probe": "probe"}
+    rows = []
+    for model, kind, fn in GATE_RUNS:
+        stats = _member_stats(load_run(RAW / fn))
+        first = True
+        for m in order:
+            s = stats.get(m)
+            if not s:
+                continue
+            label = f"{model} / {kind}" if first else ""
+            first = False
+            thr = ", ".join(f"{t:.3f}" for t in sorted(s["thr"])) or "---"
+            if s["sig"]:
+                lo, med, hi = (min(s["sig"]),
+                               sorted(s["sig"])[len(s["sig"]) // 2],
+                               max(s["sig"]))
+                rng = f"{lo:.3f} / {med:.3f} / {hi:.3f}"
+            else:
+                rng = "--- (threshold-free)"
+            rate = s["fire"] / s["n"]
+            cell = f"\\textbf{{{pct(rate)}}}" if rate in (0.0, 1.0) else pct(rate)
+            rows.append(f"    {label} & {pretty[m]} & {thr} & {rng} & {cell} \\\\")
+        rows.append("    \\midrule")
+    rows = rows[:-1]
+
+    body = f"""\\begin{{table}}[t]
+  \\centering
+  \\small
+  \\begin{{tabular}}{{lllcc}}
+    \\toprule
+    Model / task & Gate & $\\tau$ & signal min / med / max & fires \\\\
+    \\midrule
+{chr(10).join(rows)}
+    \\bottomrule
+  \\end{{tabular}}
+  \\caption{{Gate saturation. The entropy gate fires when its signal exceeds
+  $\\tau$; the margin and probe gates fire when theirs fall below it. For
+  Qwen on open-ended questions the entropy signal's \\emph{{minimum}} lies above
+  its threshold and the margin signal's \\emph{{maximum}} lies below its own, so
+  every question retrieves and P5 degenerates into P1. Both thresholds were fitted
+  on multiple-choice drafts and reused unchanged on open-ended drafts, whose signal
+  distributions differ; the probe is threshold-free on MCQ (letter agreement) and
+  so reports no range there. Llama saturates less only because its $\\tau=0.70$
+  happens to fall inside its open-ended distribution.}}
+  \\label{{tab:gate-saturation}}
+\\end{{table}}
+"""
+    write("tab_gate_saturation.tex", body)
+
+
+def tab_budget_match() -> None:
+    """Realised retrieval budget per model — the comparability condition."""
+    rows = []
+    for model, kind, fn in GATE_RUNS:
+        recs = load_run(RAW / fn)
+        s = aggregate_summary(recs)
+        stats = _member_stats(recs)
+        cells = []
+        for m in ("entropy", "margin", "hallucination_probe"):
+            st = stats.get(m)
+            cells.append(pct(st["fire"] / st["n"]) if st else "---")
+        rows.append(f"    {model} & {kind} & " + " & ".join(cells)
+                    + f" & {pct(s.retrieval_rate)} \\\\")
+
+    body = f"""\\begin{{table}}[t]
+  \\centering
+  \\begin{{tabular}}{{llcccc}}
+    \\toprule
+    & & \\multicolumn{{3}}{{c}}{{per-member vote rate}} & \\\\
+    \\cmidrule(lr){{3-5}}
+    Model & Task & entropy & margin & probe & ensemble \\\\
+    \\midrule
+{chr(10).join(rows)}
+    \\bottomrule
+  \\end{{tabular}}
+  \\caption{{Realised retrieval budgets. Thresholds for Qwen were refitted to
+  reproduce the 3B's per-gate budget, and the two tunable members landed close to
+  target. The probe could not follow: on multiple-choice it is threshold-free
+  (two drafts agree or they do not), so it cannot be recalibrated, and the larger
+  model self-agrees far more often. With one member near-silent, a
+  majority-of-three vote cannot reach the intended rate. The consequence is that
+  the two models operate at different budgets, so ``selective retrieval beats
+  always-retrieve at a matched budget'' is established \\emph{{within}} each model
+  but not \\emph{{across}} them.}}
+  \\label{{tab:budget-match}}
+\\end{{table}}
+"""
+    write("tab_budget_match.tex", body)
+
+
 # ── numbers.tex: the macros the prose uses ─────────────────────────────
 
 def numbers() -> None:
@@ -226,7 +444,7 @@ def numbers() -> None:
     for key, fn in [("Pone", "p1_medcorp_open.jsonl"), ("Pthree", "pubmedqa_p3_open.jsonl"),
                     ("Pfive", "p5_medcorp_open.jsonl")]:
         s = aggregate_summary(load_run(RAW / fn))
-        mac(f"f1{key}Open", f1(s.mean_f1))
+        mac(f"fOne{key}Open", f1(s.mean_f1))
         mac(f"ret{key}Open", pct(s.retrieval_rate))
 
     # THE headline claim, computed with its uncertainty rather than asserted.
@@ -250,6 +468,125 @@ def numbers() -> None:
     gap = DEFAULT_THRESHOLDS["low"] - summaries["Pthree"].accuracy
     mac("gapToLowBar", f"{100 * gap:.1f}")
 
+    # ── the scaling arm ────────────────────────────────────────────────
+    qwen = {}
+    for key, fn in [("QwenPthree", "p3_qwen7b_mcq.jsonl"),
+                    ("QwenPfive", "p5_qwen7b_mcq.jsonl")]:
+        s = aggregate_summary(load_run(RAW / fn))
+        qwen[key] = s
+        mac(f"acc{key}Mcq", pct(s.accuracy))
+        mac(f"ret{key}Mcq", pct(s.retrieval_rate))
+        mac(f"lat{key}Mcq", secs(s.mean_latency_s))
+
+    # Open-ended headline uses the PROPER run (v2, n=200, open-refit thresholds),
+    # not the truncated MCQ-tau saturation run.
+    for key, fn in [("QwenPthree", "p3_qwen7b_open.jsonl"),
+                    ("QwenPfive", "p5_qwen7b_open_v2.jsonl")]:
+        s = aggregate_summary(load_run(RAW / fn))
+        mac(f"fOne{key}Open", f1(s.mean_f1))
+        mac(f"ret{key}Open", pct(s.retrieval_rate))
+        mac(f"n{key}Open", str(s.n))
+
+    # Qwen P1 always-retrieve (both types) — the missing arm of "selective beats
+    # always" at 7B. Graceful: emitted only once the runs land, so the build works
+    # before and after. The chapter guards its P1 sentences with \ifdefined.
+    if (RAW / "p1_qwen7b_mcq.jsonl").exists():
+        s = aggregate_summary(load_run(RAW / "p1_qwen7b_mcq.jsonl"))
+        mac("accQwenPoneMcq", pct(s.accuracy))
+        mac("retQwenPoneMcq", pct(s.retrieval_rate))
+    if (RAW / "p1_qwen7b_open.jsonl").exists():
+        s = aggregate_summary(load_run(RAW / "p1_qwen7b_open.jsonl"))
+        mac("fOneQwenPoneOpen", f1(s.mean_f1))
+        mac("retQwenPoneOpen", pct(s.retrieval_rate))
+
+    # Closed-book scale gap, with its interval — the one clean cross-model claim.
+    q3, l3 = qwen["QwenPthree"], summaries["Pthree"]
+    diff, lo, hi = proportion_diff_interval(
+        round(q3.accuracy * q3.n), q3.n, round(l3.accuracy * l3.n), l3.n
+    )
+    mac("diffQwenLlamaMcq", f"{100 * diff:.1f}")
+    mac("diffQwenLlamaMcqCI", f"[{100 * lo:.1f}, {100 * hi:.1f}]")
+
+    # Paired McNemar on the identical 200 closed-book questions. A paired test is
+    # the right one here: both models answered the same items, so the unpaired
+    # interval above discards the pairing and is needlessly wide.
+    l_by_id = {r["question_id"]: bool(r["is_correct"])
+               for r in load_run(RAW / "p3_mirage200.jsonl")}
+    q_by_id = {r["question_id"]: bool(r["is_correct"])
+               for r in load_run(RAW / "p3_qwen7b_mcq.jsonl")}
+    shared = set(l_by_id) & set(q_by_id)
+    only_l = sum(1 for i in shared if l_by_id[i] and not q_by_id[i])
+    only_q = sum(1 for i in shared if q_by_id[i] and not l_by_id[i])
+    both = sum(1 for i in shared if q_by_id[i] and l_by_id[i])
+    chi = ((abs(only_l - only_q) - 1) ** 2 / (only_l + only_q)) if (only_l + only_q) else 0.0
+    mac("mcnemarOnlyLlama", str(only_l))
+    mac("mcnemarOnlyQwen", str(only_q))
+    mac("mcnemarBoth", str(both))
+    mac("mcnemarNeither", str(len(shared) - both - only_l - only_q))
+    mac("mcnemarChi", f"{chi:.2f}")
+    mac("mcnemarN", str(len(shared)))
+
+    # Gate saturation, stated as the numbers that make it undeniable.
+    qo = _member_stats(load_run(RAW / "p5_qwen7b_open.jsonl"))
+    if qo.get("entropy") and qo["entropy"]["sig"]:
+        mac("qwenOpenEntropyMin", f"{min(qo['entropy']['sig']):.3f}")
+        mac("qwenOpenEntropyTau", f"{sorted(qo['entropy']['thr'])[0]:.3f}")
+    if qo.get("margin") and qo["margin"]["sig"]:
+        mac("qwenOpenMarginMax", f"{max(qo['margin']['sig']):.3f}")
+        mac("qwenOpenMarginTau", f"{sorted(qo['margin']['thr'])[0]:.3f}")
+
+    # Probe collapse across scale — the cause of the budget miss.
+    lm = _member_stats(load_run(RAW / "p5_medcorp_mcq.jsonl")).get("hallucination_probe")
+    qm = _member_stats(load_run(RAW / "p5_qwen7b_mcq.jsonl")).get("hallucination_probe")
+    if lm:
+        mac("probeFireLlamaMcq", pct(lm["fire"] / lm["n"]))
+    if qm:
+        mac("probeFireQwenMcq", pct(qm["fire"] / qm["n"]))
+
+    # What the 3B's own tau did on Qwen — the prospective non-transfer result.
+    calib = aggregate_summary(load_run(RAW / "p5_qwen7b_calib.jsonl"))
+    mac("retQwenCalibAtLlamaTau", pct(calib.retrieval_rate))
+
+    # The budget gap that blocks the cross-model claim.
+    mac("budgetGapMcq",
+        f"{100 * (summaries['Pfive'].retrieval_rate - qwen['QwenPfive'].retrieval_rate):.1f}")
+
+    # Cost of gating within each model (closed-book minus gated).
+    mac("gatingCostLlamaMcq",
+        f"{100 * (summaries['Pthree'].accuracy - summaries['Pfive'].accuracy):.1f}")
+    mac("gatingCostQwenMcq",
+        f"{100 * (qwen['QwenPthree'].accuracy - qwen['QwenPfive'].accuracy):.1f}")
+
+    # Open-ended, restricted to the questions Qwen's truncated run actually covered.
+    # Comparing the full 200 against a 35-question prefix would compare two
+    # different question sets and attribute the difference to the model.
+    qwen_open = load_run(RAW / "p5_qwen7b_open.jsonl")
+    common = {r["question_id"] for r in qwen_open}
+
+    def _f1_on(path, ids=None):
+        sel = [r for r in load_run(RAW / path)
+               if ids is None or r["question_id"] in ids]
+        vals = [float(r.get("f1_score") or 0.0) for r in sel]
+        if not vals:
+            return 0.0, 0.0, 0
+        mean = sum(vals) / len(vals)
+        var = sum((v - mean) ** 2 for v in vals) / (len(vals) - 1) if len(vals) > 1 else 0.0
+        return mean, 1.96 * (var ** 0.5) / (len(vals) ** 0.5), len(vals)
+
+    l_sub, l_ci, _ = _f1_on("p5_medcorp_open.jsonl", common)
+    q_sub, q_ci, _ = _f1_on("p5_qwen7b_open.jsonl", common)
+    mac("fOnePfiveOpenCommon", f1(l_sub))
+    mac("fOneQwenPfiveOpenCommon", f1(q_sub))
+    mac("ciPfiveOpenCommon", f1(l_ci))
+    mac("ciQwenPfiveOpenCommon", f1(q_ci))
+    mac("gapOpenCommon", f1(abs(q_sub - l_sub)))
+
+    # How much harder the truncated prefix is than the full benchmark, measured
+    # on Qwen's own COMPLETED closed-book run so the model is held constant.
+    q3_full, _, _ = _f1_on("p3_qwen7b_open.jsonl")
+    q3_sub, _, _ = _f1_on("p3_qwen7b_open.jsonl", common)
+    mac("subsetBiasOpen", f1(q3_full - q3_sub))
+
     write("numbers.tex", "\n".join(lines) + "\n")
 
 
@@ -257,6 +594,9 @@ def main() -> None:
     tab_setup()
     tab_main_results()
     tab_risk()
+    tab_scaling_results()
+    tab_gate_saturation()
+    tab_budget_match()
     numbers()
     print(f"\nTables written to {OUT}/")
 

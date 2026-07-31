@@ -134,6 +134,60 @@ class LlamaBackend(LLMBackend):
 
         return text, logits
 
+    def draft_with_tokens(
+        self,
+        prompt: str,
+        max_tokens: int = 48,
+    ) -> Tuple[str, Optional[np.ndarray], Optional[list]]:
+        """
+        draft() plus the generated token strings, for the demo UI's heatmap.
+
+        logprobs=2 is what makes llama-cpp return per-token strings. At
+        temperature 0.0 it does not change which tokens are generated, so this
+        is the same draft the gate would have measured without it.
+
+        Note the deliberate difference from draft(): the logit slice is bounded
+        by the number of tokens ACTUALLY generated, not by max_tokens, because
+        a token string has to exist for every entropy value shown. draft()
+        keeps its original max_tokens slicing — changing it would move H̄ on
+        every question and invalidate the shipped calibration.
+        """
+        output = self._llm.create_completion(
+            prompt,
+            max_tokens=max_tokens,
+            temperature=self._temperature,
+            logprobs=2,
+            echo=False,
+        )
+        choice = output["choices"][0]
+        text = choice["text"]
+        tokens = (choice.get("logprobs") or {}).get("tokens")
+
+        # Deliberately the SHIPPED extractor, so the demo's H̄ is bit-identical
+        # to the evaluation's. That extractor starts the slice at
+        # len(tokenize(prompt)), which is one row too high: tokenize() prepends
+        # BOS but the completion's context does not. Measured on a 48-token
+        # draft, the buffer held 123 rows against a computed n_prompt of 76, so
+        # the prompt really occupied 75. Verified under greedy decoding, where
+        # argmax of a row must be the token that row produced: starting at
+        # rows - n_generated matched all 48 tokens (100%), the n_prompt start
+        # matched none (0%).
+        #
+        # So the returned logits are the distributions for generated tokens
+        # 1..N-1 — the first token's row is skipped. We drop tokens[0] to keep
+        # the index-for-index promise in the base-class docstring; the UI
+        # therefore shows the heatmap from the second token onward and says so.
+        # Correcting the slice would change H̄ on every question and invalidate
+        # the shipped τ calibration, so it is documented, not fixed, before
+        # submission.
+        logits = None
+        if self._logits_all:
+            logits = self._extract_generation_logits(prompt, n_generated=max_tokens)
+            if logits is not None and tokens:
+                tokens = tokens[1:len(logits) + 1]
+
+        return text, logits, tokens
+
     def answer(
         self,
         prompt: str,

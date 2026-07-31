@@ -45,6 +45,33 @@ class LLMBackend(ABC):
                       API backend).
         """
 
+    def draft_with_tokens(
+        self,
+        prompt: str,
+        max_tokens: int = 48,
+    ) -> Tuple[str, Optional[np.ndarray], Optional[List[str]]]:
+        """
+        Like draft(), but also return the generated token STRINGS when the
+        backend can supply them.
+
+        Deliberately NOT abstract: the default delegates to draft() and reports
+        tokens=None, so every existing backend — and every test mock — keeps
+        satisfying the interface untouched. Only callers that want token-level
+        display (currently just the demo UI) need a backend that overrides it.
+
+        Args:
+            prompt:     The full prompt string.
+            max_tokens: Maximum number of tokens to generate.
+
+        Returns:
+            (text, logits, tokens)
+            - tokens: one string per generated token, aligned index-for-index
+                      with the rows of `logits`, or None if this backend cannot
+                      report them.
+        """
+        text, logits = self.draft(prompt, max_tokens=max_tokens)
+        return text, logits, None
+
     @abstractmethod
     def answer(
         self,
