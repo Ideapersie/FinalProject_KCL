@@ -75,8 +75,8 @@ and~\ref{sec:eval-protective} dissect \emph{why} retrieval fails to help
 here, and the answer is more interesting than ``the model is weak.''
 
 \paragraph{3. Open-ended inverts the ordering.} On PubMedQA, P5
-($F_1 = \f1PfiveOpen{}$) edges above closed-book P3 (\f1PthreeOpen{}), with
-P1 at \f1PoneOpen{}. Where the model \emph{lacks} the specific study
+($F_1 = \fOnePfiveOpen{}$) edges above closed-book P3 (\fOnePthreeOpen{}), with
+P1 at \fOnePoneOpen{}. Where the model \emph{lacks} the specific study
 findings, retrieval genuinely adds information. The MCQ/open-ended split is
 not an inconsistency to be explained away --- it is the finding: retrieval
 helps precisely when the model does not already know, which is exactly the
@@ -348,7 +348,13 @@ and the gate demonstrably routes sensibly --- yet the quantised 3B model
 tops out \gapToLowBar{}pp below the lowest bar. The dissertation's honest
 output on this axis is a \emph{quantified distance to clinical
 acceptability} for a fully offline, CPU-only configuration --- a number that
-is useful precisely because nobody should deploy without knowing it.
+is useful precisely because nobody should deploy without knowing it. That
+attribution is tested directly by the scaling arm
+(Chapter~\ref{ch:qwen}): on the identical benchmark the 7B model clears the
+low-risk bar --- closed-book P3 at \accQwenPthreeMcq{} and gated P5 at
+\accQwenPfiveMcq{}, both above \barLow{} --- so the envelope is empty here
+because of scale, not method, and ceases to be empty at low risk once capability
+is sufficient.
 
 Second, the statistical honesty. The high-risk stratum contains only
 $n=6$ questions; its 95\% Wilson intervals span roughly $\pm 30$pp

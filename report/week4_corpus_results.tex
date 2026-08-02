@@ -66,9 +66,9 @@ corpus-independent (it never retrieves) and serves as a fixed reference.
     P3 closed-book$^{*}$ & MCQ  & Acc. & \accPthreeMcq & \accPthreeMcq  & \retPthreeMcq & \latPthreeMcq \\
     P5 gated (calib.)    & MCQ  & Acc. & 45.5\%$^{\ddagger}$ & \textbf{\accPfiveMcq} & \retPfiveMcq & \latPfiveMcq \\
     \midrule
-    P1 always-retrieve   & open & F1   & ---    & \textbf{\f1PoneOpen}  & \retPoneOpen  & 23\,s \\
-    P3 closed-book$^{*}$ & open & F1   & \f1PthreeOpen & \f1PthreeOpen  & \retPthreeOpen & 27\,s \\
-    P5 gated (calib.)    & open & F1   & 0.191$^{\ddagger}$ & \textbf{\f1PfiveOpen} & \retPfiveOpen & 380\,s \\
+    P1 always-retrieve   & open & F1   & ---    & \textbf{\fOnePoneOpen}  & \retPoneOpen  & 23\,s \\
+    P3 closed-book$^{*}$ & open & F1   & \fOnePthreeOpen & \fOnePthreeOpen  & \retPthreeOpen & 27\,s \\
+    P5 gated (calib.)    & open & F1   & 0.191$^{\ddagger}$ & \textbf{\fOnePfiveOpen} & \retPfiveOpen & 380\,s \\
     \bottomrule
   \end{tabular}
   \caption{All policies on the real MedCorp corpus (425{,}847 chunks) versus the
@@ -136,8 +136,8 @@ already holds parametrically, so retrieved context can only distract, never info
 The gate narrows but does not close this gap, because no per-query signal is a
 perfect predictor of whether a given retrieval will help. Crucially, the
 open-ended results tell the opposite story: there the model \emph{lacks} the
-specific study findings, retrieval genuinely adds information, and P5 (F1 \f1PfiveOpen)
-edges above closed-book (\f1PthreeOpen). Retrieval helps precisely when the model does not
+specific study findings, retrieval genuinely adds information, and P5 (F1 \fOnePfiveOpen)
+edges above closed-book (\fOnePthreeOpen). Retrieval helps precisely when the model does not
 already know the answer --- which is exactly the condition the gate exists to
 detect.
 
