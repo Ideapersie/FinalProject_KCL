@@ -91,6 +91,28 @@ QWEN_OPEN = {
     "P5 gated (recalib.)": "p5_qwen7b_open_v2.jsonl",
 }
 
+# ── Qwen2.5-14B: the third scaling point ──────────────────────────────
+# Same corpus, questions and policies again; only scale changes. P5-MCQ latency
+# alone is read from the clean-profiled re-run (p5_qwen7b_mcq_clean is the 7B analogue);
+# the 14B runs were profiled clean from the start (energy + memory tracking off).
+QWEN14_MCQ = {
+    "P1 always-retrieve": "p1_qwen14b_mcq.jsonl",
+    "P3 closed-book$^\\dagger$": "p3_qwen14b_mcq.jsonl",
+    "P5 gated (recalib.)": "p5_qwen14b_mcq.jsonl",
+}
+QWEN14_OPEN = {
+    "P1 always-retrieve": "p1_qwen14b_open.jsonl",
+    "P3 closed-book$^\\dagger$": "p3_qwen14b_open.jsonl",
+    "P5 gated (recalib.)": "p5_qwen14b_open.jsonl",
+}
+
+# The three-model scaling ladder, in order. Used by every cross-model table/figure.
+SCALES = [
+    ("Llama-3.2-3B", MCQ,        OPEN),
+    ("Qwen2.5-7B",   QWEN_MCQ,   QWEN_OPEN),
+    ("Qwen2.5-14B",  QWEN14_MCQ, QWEN14_OPEN),
+]
+
 # The truncated MCQ-tau open run — saturation evidence only, never the scaling result.
 QWEN_OPEN_SATURATED = "p5_qwen7b_open.jsonl"
 
@@ -99,11 +121,13 @@ QWEN_OPEN_SATURATED = "p5_qwen7b_open.jsonl"
 # the before/after of task-type recalibration: the MCQ-tau run saturates, the
 # refitted run lands on budget.
 GATE_RUNS = [
-    ("Llama-3.2-3B", "MCQ",  "p5_medcorp_mcq.jsonl"),
-    ("Llama-3.2-3B", "open", "p5_medcorp_open.jsonl"),
-    ("Qwen2.5-7B",   "MCQ",  "p5_qwen7b_mcq.jsonl"),
-    ("Qwen2.5-7B",   "open (MCQ $\\tau$)", QWEN_OPEN_SATURATED),
-    ("Qwen2.5-7B",   "open (recalib.)",    "p5_qwen7b_open_v2.jsonl"),
+    ("Llama-3.2-3B",  "MCQ",  "p5_medcorp_mcq.jsonl"),
+    ("Llama-3.2-3B",  "open", "p5_medcorp_open.jsonl"),
+    ("Qwen2.5-7B",    "MCQ",  "p5_qwen7b_mcq.jsonl"),
+    ("Qwen2.5-7B",    "open (MCQ $\\tau$)", QWEN_OPEN_SATURATED),
+    ("Qwen2.5-7B",    "open (recalib.)",    "p5_qwen7b_open_v2.jsonl"),
+    ("Qwen2.5-14B",   "MCQ",  "p5_qwen14b_mcq.jsonl"),
+    ("Qwen2.5-14B",   "open", "p5_qwen14b_open.jsonl"),
 ]
 
 
@@ -286,7 +310,7 @@ def _member_stats(records) -> dict:
 def tab_scaling_results() -> None:
     """Both models, both question types — the scaling comparison."""
     rows = []
-    for model, mcq, opn in [("Llama-3.2-3B", MCQ, OPEN), ("Qwen2.5-7B", QWEN_MCQ, QWEN_OPEN)]:
+    for model, mcq, opn in SCALES:
         rows.append(f"    \\multicolumn{{6}}{{l}}{{\\textit{{{model}}}}} \\\\")
         for label, fn in _present(mcq).items():
             s = aggregate_summary(load_run(RAW / fn))
@@ -297,7 +321,7 @@ def tab_scaling_results() -> None:
             n_cell = f"${s.n}$" if s.n >= 200 else f"$\\mathbf{{{s.n}}}$"
             rows.append(f"    \\quad {label} & open & {n_cell} & {f1(s.mean_f1)} "
                         f"& {pct(s.retrieval_rate)} & {secs(s.mean_latency_s)} \\\\")
-        if model != "Qwen2.5-7B":
+        if model != SCALES[-1][0]:
             rows.append("    \\midrule")
 
     body = f"""\\begin{{table}}[t]
@@ -469,6 +493,10 @@ def numbers() -> None:
     mac("gapToLowBar", f"{100 * gap:.1f}")
 
     # ── the scaling arm ────────────────────────────────────────────────
+    # Accuracy and retrieval come from the original runs; the 7B P5-MCQ LATENCY comes
+    # from the clean-profiled re-run (the original had memory tracking on and its
+    # latency is unusable — accuracy is unaffected and stays on the original).
+    LAT_OVERRIDE = {"p5_qwen7b_mcq.jsonl": "p5_qwen7b_mcq_clean.jsonl"}
     qwen = {}
     for key, fn in [("QwenPthree", "p3_qwen7b_mcq.jsonl"),
                     ("QwenPfive", "p5_qwen7b_mcq.jsonl")]:
@@ -476,7 +504,9 @@ def numbers() -> None:
         qwen[key] = s
         mac(f"acc{key}Mcq", pct(s.accuracy))
         mac(f"ret{key}Mcq", pct(s.retrieval_rate))
-        mac(f"lat{key}Mcq", secs(s.mean_latency_s))
+        lat_fn = LAT_OVERRIDE.get(fn, fn)
+        lat_s = aggregate_summary(load_run(RAW / lat_fn)) if (RAW / lat_fn).exists() else s
+        mac(f"lat{key}Mcq", secs(lat_s.mean_latency_s))
 
     # Open-ended headline uses the PROPER run (v2, n=200, open-refit thresholds),
     # not the truncated MCQ-tau saturation run.
@@ -498,6 +528,71 @@ def numbers() -> None:
         s = aggregate_summary(load_run(RAW / "p1_qwen7b_open.jsonl"))
         mac("fOneQwenPoneOpen", f1(s.mean_f1))
         mac("retQwenPoneOpen", pct(s.retrieval_rate))
+
+    # ── the third scaling point: Qwen2.5-14B (graceful) ────────────────
+    q14 = {}
+    for key, fn in [("QwenFourteenPone", "p1_qwen14b_mcq.jsonl"),
+                    ("QwenFourteenPthree", "p3_qwen14b_mcq.jsonl"),
+                    ("QwenFourteenPfive", "p5_qwen14b_mcq.jsonl")]:
+        if (RAW / fn).exists():
+            s = aggregate_summary(load_run(RAW / fn))
+            q14[key] = s
+            mac(f"acc{key}Mcq", pct(s.accuracy))
+            mac(f"ret{key}Mcq", pct(s.retrieval_rate))
+            mac(f"lat{key}Mcq", secs(s.mean_latency_s))
+    for key, fn in [("QwenFourteenPone", "p1_qwen14b_open.jsonl"),
+                    ("QwenFourteenPthree", "p3_qwen14b_open.jsonl"),
+                    ("QwenFourteenPfive", "p5_qwen14b_open.jsonl")]:
+        if (RAW / fn).exists():
+            s = aggregate_summary(load_run(RAW / fn))
+            mac(f"fOne{key}Open", f1(s.mean_f1))
+            mac(f"ret{key}Open", pct(s.retrieval_rate))
+
+    # Selective-beats-always at 7B (P5 vs P1), with its interval. The 3B analogue is
+    # diffPfivePone; the 14B is diffFourteenPfivePone below. All three cross-checked
+    # together are what carry the claim.
+    if (RAW / "p1_qwen7b_mcq.jsonl").exists():
+        p5q, p1q = qwen["QwenPfive"], aggregate_summary(load_run(RAW / "p1_qwen7b_mcq.jsonl"))
+        d, lo, hi = proportion_diff_interval(
+            round(p5q.accuracy * p5q.n), p5q.n, round(p1q.accuracy * p1q.n), p1q.n)
+        mac("diffQwenPfivePone", f"{100 * d:.1f}")
+        mac("diffQwenPfivePoneCI", f"[{100 * lo:.1f}, {100 * hi:.1f}]")
+
+    # Closed-book plateau: the 7B->14B gain is a fraction of the 3B->7B gain.
+    if "QwenFourteenPthree" in q14:
+        g1 = 100 * (qwen["QwenPthree"].accuracy - summaries["Pthree"].accuracy)   # 3B->7B
+        g2 = 100 * (q14["QwenFourteenPthree"].accuracy - qwen["QwenPthree"].accuracy)  # 7B->14B
+        mac("scaleGainSmall", f"{g1:.1f}")
+        mac("scaleGainLarge", f"{g2:.1f}")
+
+    # Selective-beats-always at 14B, with its interval — significant for the first time.
+    if "QwenFourteenPfive" in q14 and "QwenFourteenPone" in q14:
+        p5x, p1x = q14["QwenFourteenPfive"], q14["QwenFourteenPone"]
+        d, lo, hi = proportion_diff_interval(
+            round(p5x.accuracy * p5x.n), p5x.n, round(p1x.accuracy * p1x.n), p1x.n)
+        mac("diffFourteenPfivePone", f"{100 * d:.1f}")
+        mac("diffFourteenPfivePoneCI", f"[{100 * lo:.1f}, {100 * hi:.1f}]")
+
+    # ── corpus-lacks-info vs distraction: paired P1-vs-P3 break/fix per model ──
+    # BREAK = P3 correct, P1 wrong (retrieval broke it); FIX = the reverse. FIX>0
+    # everywhere shows the corpus supplies answers; BREAK rising with scale shows
+    # the mechanism is distraction, not corpus absence.
+    def _break_fix(p3_fn, p1_fn):
+        p3 = {r["question_id"]: bool(r["is_correct"]) for r in load_run(RAW / p3_fn)}
+        p1 = {r["question_id"]: bool(r["is_correct"]) for r in load_run(RAW / p1_fn)}
+        ids = set(p3) & set(p1)
+        brk = sum(1 for i in ids if p3[i] and not p1[i])
+        fix = sum(1 for i in ids if not p3[i] and p1[i])
+        return brk, fix
+    bf_specs = [("Llama", "p3_mirage200.jsonl", "p1_medcorp_mcq.jsonl"),
+                ("QwenSeven", "p3_qwen7b_mcq.jsonl", "p1_qwen7b_mcq.jsonl"),
+                ("QwenFourteen", "p3_qwen14b_mcq.jsonl", "p1_qwen14b_mcq.jsonl")]
+    for tag, p3_fn, p1_fn in bf_specs:
+        if (RAW / p3_fn).exists() and (RAW / p1_fn).exists():
+            brk, fix = _break_fix(p3_fn, p1_fn)
+            mac(f"break{tag}", str(brk))
+            mac(f"fix{tag}", str(fix))
+            mac(f"harmRatio{tag}", f"{brk/fix:.1f}" if fix else "$\\infty$")
 
     # Closed-book scale gap, with its interval — the one clean cross-model claim.
     q3, l3 = qwen["QwenPthree"], summaries["Pthree"]

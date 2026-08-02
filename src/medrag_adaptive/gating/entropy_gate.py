@@ -46,13 +46,29 @@ class EntropyGate(Gate):
 
     name = "entropy"
 
-    def __init__(self, threshold: float = 2.5, draft_max_tokens: int = 48) -> None:
+    def __init__(
+        self,
+        threshold: float = 2.5,
+        draft_max_tokens: int = 48,
+        keep_tokens: bool = False,
+    ) -> None:
         self.threshold = threshold
         self.draft_max_tokens = draft_max_tokens
+        # Observational only: when True the gate also records the draft's token
+        # strings in details, for the demo UI's token-level heatmap. It never
+        # changes the signal or the decision. Default False so every evaluation
+        # run takes the identical code path it always has.
+        self.keep_tokens = keep_tokens
 
     def decide(self, question: UnifiedQuestion, llm: LLMBackend) -> GateDecision:
         prompt = build_draft_prompt(question.question_text, question.choices)
-        _text, logits = llm.draft(prompt, max_tokens=self.draft_max_tokens)
+        tokens = None
+        if self.keep_tokens:
+            _text, logits, tokens = llm.draft_with_tokens(
+                prompt, max_tokens=self.draft_max_tokens
+            )
+        else:
+            _text, logits = llm.draft(prompt, max_tokens=self.draft_max_tokens)
 
         if logits is None:
             # logits_all=False (low tier): this gate cannot run. Abstain.
@@ -76,5 +92,6 @@ class EntropyGate(Gate):
                 "mean_entropy": mean_entropy,
                 "threshold": self.threshold,
                 "per_token_entropy": [float(h) for h in per_token],
+                **({"draft_tokens": tokens} if self.keep_tokens else {}),
             },
         )

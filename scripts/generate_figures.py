@@ -276,6 +276,7 @@ def fig_safety_envelope() -> None:
 # reused here.
 C_LLAMA = "#0072B2"   # blue
 C_QWEN = "#D55E00"    # vermillion
+C_QWEN14 = "#009E73"  # bluish green — third scale, colourblind-safe (Okabe-Ito)
 C_TASK_MCQ = "#0072B2"
 C_TASK_OPEN = "#D55E00"
 
@@ -325,7 +326,14 @@ def fig_scaling() -> None:
             ("P5", "p5_qwen7b_mcq.jsonl"),
             ("P1", "p1_qwen7b_mcq.jsonl"),
         ]),
+        ("Qwen2.5-14B", C_QWEN14, [
+            ("P3", "p3_qwen14b_mcq.jsonl"),
+            ("P5", "p5_qwen14b_mcq.jsonl"),
+            ("P1", "p1_qwen14b_mcq.jsonl"),
+        ]),
     ]
+    series = [(lbl, col, [(n, f) for n, f in runs if (RAW / f).exists()])
+              for lbl, col, runs in series]
 
     fig, ax = plt.subplots(figsize=(6.4, 4.0))
     for label, colour, runs in series:
