@@ -1,0 +1,53 @@
+% Drop-in paragraph for the Limitations / Threats to Validity section.
+% Discovered 2026-07-26 while building the demo UI, which pairs the entropy
+% gate's per-token values with their token strings for the first time and so
+% exposed a length mismatch that the numeric logs alone could not reveal.
+%
+% Paste into report/chapters/discussion.tex (or evaluation.tex, wherever
+% threats to validity live) and adjust the \label to match your scheme.
+
+\subsection{Off-by-one in the entropy gate's logit slice}
+\label{sec:limitation-entropy-offset}
+
+The entropy gate reads the model's per-token logit distributions from
+\texttt{llama-cpp-python}'s \texttt{\_scores} buffer, slicing the rows that
+correspond to generated tokens as
+\texttt{\_scores[n\_prompt : n\_prompt + max\_tokens]}, where
+\texttt{n\_prompt} is \texttt{len(tokenize(prompt))}. That start index is one
+row too high. \texttt{tokenize()} prepends a beginning-of-sequence token that
+the completion's context does not contain, so the prompt occupies
+$n_{\text{prompt}} - 1$ rows rather than $n_{\text{prompt}}$. The discrepancy
+was confirmed directly: because decoding is greedy at temperature $0$, the
+$\arg\max$ of each logit row must be the token that row produced, and for a
+48-token draft the slice beginning at $n_{\text{prompt}} - 1$ reproduced all 48
+generated tokens, while the slice beginning at $n_{\text{prompt}}$ reproduced
+none of them.
+
+The practical consequence is that $\bar{H}$ is an average over generated tokens
+$2 \ldots N$ rather than $1 \ldots N$: the first generated token's entropy is
+never included. On a representative clinical question the omitted token was in
+fact the highest-entropy one in the draft ($H = 3.28$ nats), and excluding it
+lowered the gate signal from $0.763$ to $0.709$ against a threshold of
+$\tau = 0.70$.
+
+This does not invalidate the results reported here, for three reasons. The bias
+is deterministic and applies identically to every question, so it is a
+consistent redefinition of the signal rather than a source of noise. The
+threshold $\tau$ was calibrated on this same quantity, so the retrieval budget
+it produces is the budget actually delivered. And the budget-matching procedure
+used to transfer thresholds across model scales inherits the identical bias on
+both models, so the cross-model comparison remains like-for-like. What the
+reader should take from this is a narrower definitional claim: the quantity
+this work calls mean draft entropy is the mean over the draft's second and
+subsequent tokens.
+
+The defect was found late enough in the project that correcting it was judged
+the greater risk. Re-slicing the buffer would shift $\bar{H}$ on every question
+--- upward, since the omitted first token tends to be high-entropy --- which
+would move an unknown number of near-threshold decisions across $\tau$, alter
+the realised retrieval budget, and require the full calibration and evaluation
+to be re-run for both models. The gate was therefore left as evaluated, and the
+demonstration interface reports the same $\bar{H}$ as the logs and renders its
+token-level heatmap over exactly the tokens that average covers. A corrected
+slice is the first item of future work, and the correction is a single-line
+change once there is time to re-run the calibration behind it.
