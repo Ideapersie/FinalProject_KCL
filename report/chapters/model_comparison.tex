@@ -1,0 +1,211 @@
+% ---------------------------------------------------------------------
+% Chapter: cross-model comparison (Llama-3.2-3B, Qwen2.5-7B, Qwen2.5-14B)
+% Numbers are macros from ../results/tables/numbers.tex. No literals.
+% ---------------------------------------------------------------------
+
+\chapter{The Scaling Curve: Three Models Compared}
+\label{ch:comparison}
+
+Chapter~\ref{ch:qwen} established each larger model on its own terms. This
+chapter puts all three on one axis --- Llama-3.2-3B, Qwen2.5-7B and
+Qwen2.5-14B, over an identical corpus, an identical question set and identical
+policy code --- and asks what changes with scale, what does not, and which of
+those changes were expected. Table~\ref{tab:scaling-results} carries the full
+numbers; the analysis here reads them.
+
+\section{What Is and Is Not Comparable}
+\label{sec:cmp-validity}
+
+Holding the corpus, questions and code fixed controls almost everything, but
+not the one variable the central claim depends on. ``Selective retrieval beats
+always-retrieve'' is a statement about accuracy \emph{at a given retrieval
+budget}, and the three gated policies do not share a budget: they retrieve on
+\retPfiveMcq{}, \retQwenPfiveMcq{} and \retQwenFourteenPfiveMcq{} of
+multiple-choice queries respectively. The budgets fall as the model grows, for
+the reason set out in Section~\ref{sec:qwen-budget}: the hallucination probe is
+threshold-free on multiple-choice and cannot be recalibrated, and a larger
+model self-agrees more often, so the ensemble's realised rate drifts downward
+with scale.
+
+\begin{quote}
+  Within each model, the policies are compared at a controlled budget and the
+  ordering is meaningful. \emph{Across} models the gated rows sit at different
+  budgets, so a raw difference between two P5 rows confounds model scale with
+  retrieval rate. The comparisons that survive are those that fix the budget by
+  construction --- the closed-book policies, which all retrieve 0\% --- and the
+  \emph{within-model} orderings, which are read as directions rather than
+  cross-model magnitudes.
+\end{quote}
+
+\section{Closed-Book Capability: A Curve That Flattens}
+\label{sec:cmp-mcq}
+
+Closed-book accuracy is the cleanest cross-model comparison, since no policy
+retrieves and no budget confound applies. It rises then plateaus:
+\accPthreeMcq{} at 3B, \accQwenPthreeMcq{} at 7B, \accQwenFourteenPthreeMcq{}
+at 14B. The two steps are not equal. The 3B-to-7B step adds
+\scaleGainSmall{}pp; the 7B-to-14B step, across a model twice the size, adds
+only \scaleGainLarge{}pp. Doubling the parameters a second time buys almost
+nothing on this benchmark.
+
+For the 3B-to-7B step, both models answered the same \mcnemarN{} questions, so
+a paired test is available: \mcnemarBoth{} correct for both, \mcnemarNeither{}
+for neither, \mcnemarOnlyQwen{} for Qwen alone and \mcnemarOnlyLlama{} for
+Llama alone, giving $\chi^2 = \mcnemarChi{}$ on the discordant pairs
+($p < 0.05$). The \mcnemarOnlyLlama{} questions the smaller model gets right
+and the larger gets wrong are a reminder that scale redistributes competence
+rather than simply adding it; a single aggregate accuracy is not a complete
+description of a model's medical knowledge. From 7B to 14B the aggregate barely
+moves, which is the more consequential fact for this dissertation and is taken
+up in Section~\ref{sec:cmp-bars}.
+
+\section{Retrieval's Value Inverts, Then Stays Inverted}
+\label{sec:cmp-open}
+
+The open-ended arm is complete at $n=200$ for every policy and model, once the
+gated runs used thresholds refitted for open-ended drafts
+(Section~\ref{sec:qwen-saturation}). The closed-book scores rise and plateau in
+the same shape as multiple-choice: \fOnePthreeOpen{}, \fOneQwenPthreeOpen{},
+\fOneQwenFourteenPthreeOpen{}.
+
+The finding is in the \emph{ordering} of the three policies, and how it changes
+with scale:
+
+\begin{quote}
+  \textbf{3B:} P1 (\fOnePoneOpen{}) $>$ P5 (\fOnePfiveOpen{}) $>$ P3
+  (\fOnePthreeOpen{}) --- always-retrieve is best, retrieval helps.\\
+  \textbf{7B:} P3 (\fOneQwenPthreeOpen{}) $>$ P5 (\fOneQwenPfiveOpen{}) $>$ P1
+  (\fOneQwenPoneOpen{}) --- closed-book is best, retrieval hurts.\\
+  \textbf{14B:} P3 (\fOneQwenFourteenPthreeOpen{}) $>$ P5
+  (\fOneQwenFourteenPfiveOpen{}) $>$ P1 (\fOneQwenFourteenPoneOpen{}) ---
+  the same inverted order as 7B.
+\end{quote}
+
+Two things matter here. First, the ordering \emph{inverts} between the smallest
+model and the larger two: on the 3B, open-ended questions sit outside the
+model's parametric knowledge, so retrieved context is a net help and more
+retrieval scores higher; by 7B the model already knows more than the passages
+reliably add, so the same corpus that helped now hurts. Second, the inversion
+does not drift back --- it holds identically at 14B. The reversal is therefore
+not a quirk of the 7B but a stable property of the two larger models, which is
+the strongest form the observation can take without a fourth scale. Open-ended
+questions are simply where parametric knowledge runs out last, so the
+retrieval-hurts regime that multiple-choice showed at every scale reaches
+open-ended only once the model is large enough.
+
+The usual cautions bound the gated rows: the open-ended budgets are not matched
+across models (\retPfiveOpen{}, \retQwenPfiveOpen{}, \retQwenFourteenPoneOpen{}
+are not the operating points to compare), so the P5 figures are read as ordinal
+positions within each model's own P1--P3 range; and paragraph-level token-$F_1$
+is surface-lexical, so only orderings are interpreted, never the size of a gap.
+
+\section{The Mechanism: Distraction Scales with Capability}
+\label{sec:cmp-mechanism}
+
+Why does retrieval hurt more as the model improves? The paired
+closed-book-versus-always-retrieve analysis, run at each scale, answers it
+directly. Counting the multiple-choice questions where always-retrieving
+\emph{breaks} a closed-book-correct answer against those it \emph{fixes}:
+
+\begin{quote}
+  3B: \breakLlama{} broken / \fixLlama{} fixed (\harmRatioLlama{}$\times$)
+  \quad 7B: \breakQwenSeven{} / \fixQwenSeven{}
+  (\harmRatioQwenSeven{}$\times$) \quad
+  14B: \breakQwenFourteen{} / \fixQwenFourteen{}
+  (\harmRatioQwenFourteen{}$\times$).
+\end{quote}
+
+The fixes never vanish --- the corpus keeps supplying answers the model lacked
+at every scale --- but the breakages grow, and the 14B breaks the most correct
+answers of any model. This is the signature of displacement, not of a
+deficient corpus: a corpus that simply lacked information would damage a
+stronger model \emph{less}, because the stronger model can fall back on what it
+knows, whereas here the strongest model is harmed the most precisely because it
+has the most correct knowledge to be displaced. Section~\ref{sec:disc-synthesis}
+develops this into the central reframing --- that a gate's value is protection,
+not efficiency --- and rules out the corpus-absence objection in full. For the scaling story it is enough to note that the phenomenon the gate
+exists to manage does not weaken with scale; it strengthens.
+
+\section{Selective Beats Always-Retrieve --- and at 14B, Significantly}
+\label{sec:cmp-selective}
+
+The central claim is that gating beats always-retrieving. Within each model,
+where the comparison is legitimate, P5 leads P1 on multiple-choice at all three
+scales: by \diffPfivePone{}pp on the 3B, \diffQwenPfivePone{}pp on the 7B and
+\diffFourteenPfivePone{}pp on the 14B. On the two smaller models the 95\%
+intervals (\diffPfivePoneCI{} and \diffQwenPfivePoneCI{}) cross zero: each is
+individually \emph{consistent with} an improvement rather than a demonstration
+of one. At 14B the interval is \diffFourteenPfivePoneCI{} --- it excludes zero,
+so for the first time the advantage of selective over always-retrieve is
+statistically significant on a single model.
+
+That significance is a direct consequence of the mechanism in
+Section~\ref{sec:cmp-mechanism}: because distraction is worst on the 14B,
+always-retrieve is punished hardest there, opening the widest and cleanest gap
+for the gate to exploit. The claim is thus supported two ways at once --- by
+three same-direction estimates whose agreement across scales is itself evidence,
+and by one estimate that clears significance on its own at the scale where the
+effect is strongest.
+
+\section{Scale Versus the Safety Bars}
+\label{sec:cmp-bars}
+
+The most consequential cross-model fact is where the curve sits relative to the
+clinical bars (\barLow{}/\barMedium{}/\barHigh{}). The 3B cleared none. Both
+Qwen models clear the \barLow{} low-risk bar on their best policy
+(\accQwenPthreeMcq{} and \accQwenFourteenPthreeMcq{}), so the safety envelope
+that was empty at 3B is populated at low risk once capability is sufficient. But
+\emph{neither larger model reaches the \barMedium{} medium-risk bar}, and the
+curve is flattening as it approaches: the \scaleGainLarge{}pp gained from 7B to
+14B is a twelfth of the \scaleGainSmall{}pp gained from 3B to 7B. Extrapolating
+this curve to the 80\% bar would require a scale increase that the measured
+diminishing returns give no reason to expect to be enough.
+
+This is the result that most sharpens the dissertation's argument. Scaling is a
+real lever --- it moved a system from clearing no bar to clearing the low one
+--- but it is a saturating lever, and it saturates below the threshold that
+medium-risk clinical use would demand. That is precisely the regime in which
+\emph{method} matters: if raw capability cannot be scaled to safety within a
+practical range, then the discipline of retrieving only when it helps, and not
+otherwise, is not an efficiency nicety but part of how the remaining distance is
+to be closed.
+
+\section{Was This the Expected Result?}
+\label{sec:cmp-expected}
+
+Partly, and the unexpected parts are the more useful. Three predictions held.
+Closed-book capability rose with scale and the paired test supported it at
+$p<0.05$. Calibration non-transfer, predicted from each smaller model's signal
+distribution, was confirmed prospectively at every new scale. And selective
+retrieval beat always-retrieve in direction at all three scales, becoming
+significant on the 14B.
+
+Three things were not predicted. The closed-book curve \emph{plateaus} sharply
+after 7B, so ``just use a bigger model'' is a weaker remedy than it first
+appears. The medium-risk bar stays \emph{out of reach} even at 14B, which
+relocates the burden from capability onto method. And the open-ended
+retrieval-helps result from the 3B did not merely fail to replicate but
+\emph{inverted}, then held inverted at 14B --- a sharper and more stable finding
+than a clean replication would have been. Together they say that the value of
+retrieval is not a fixed property of the corpus or the method but a function of
+the gap between what the model knows and what the passages add: a gap that
+scaling closes on the tasks the model can already do, and that the gate exists
+to detect on the tasks it cannot. That is the thesis the project was built to
+test, and it took the third model to turn it from a two-point line into a curve
+with a shape.
+
+\section{Cost}
+\label{sec:cmp-cost}
+
+Latency is not comparable across all three models, because the 3B ran on CPU
+and both Qwen models on a T4 GPU; that comparison would measure the accelerator,
+not the model. The within-GPU comparison is clean, however, now that the gated
+runs were re-profiled with the heavy trackers disabled. On the T4, closed-book
+answers a multiple-choice question in \latQwenPthreeMcq{} (7B) and
+\latQwenFourteenPthreeMcq{} (14B); the gated policy takes \latQwenPfiveMcq{} and
+\latQwenFourteenPfiveMcq{} respectively. The gate's cost is the price of its
+extra draft generations and scales gently with model size, as expected --- the
+14B's gated query is slower than the 7B's but remains within an interactive
+budget. Cost therefore does not disturb the accuracy conclusions, and the
+deployability argument (Section~\ref{sec:disc-deployment}) rests on a measured
+gate cost rather than an estimated one.
