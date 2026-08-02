@@ -36,7 +36,7 @@
 
 % ---- Generated numbers (MUST precede any chapter that uses them) ----
 % numbers.tex defines a macro for every result figure cited in the text
-% (\accPfiveMcq, \f1PthreeOpen, ...). Chapters never hard-code a result: a
+% (\accPfiveMcq, \fOnePthreeOpen, ...). Chapters never hard-code a result: a
 % literal cannot be regenerated and silently rots when the scorer changes, which
 % is exactly what happened before this was introduced. Regenerate with:
 %     python scripts/generate_tables.py
@@ -89,7 +89,7 @@ retrieval poisons, the gate's skip decision scored 19/19. Three further
 findings shape the conclusions: literature-default gate thresholds are
 physically unreachable on a quantised model and must be recalibrated per
 model; on open-ended PubMedQA the ordering inverts and retrieval helps
-(gated $F_1$ \f1PfiveOpen{} versus closed-book \f1PthreeOpen{}); and no
+(gated $F_1$ \fOnePfiveOpen{} versus closed-book \fOnePthreeOpen{}); and no
 policy clears even the \barLow{} low-risk clinical bar --- closed-book tops
 out at \accPthreeMcq{}, quantifying an \gapToLowBar{}pp distance between
 this deployment class and clinical acceptability. All reported numbers are
@@ -113,6 +113,8 @@ harness.
 \input{chapters/methodology}
 \input{chapters/implementation}
 \input{chapters/evaluation}
+\input{chapters/qwen_scaling}
+\input{chapters/model_comparison}
 \input{chapters/discussion}
 \input{chapters/lsep}
 \input{chapters/conclusion}
