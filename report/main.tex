@@ -23,6 +23,8 @@
 \usepackage{graphicx}          % figures
 \usepackage{xcolor}            % listing / highlight colours
 \usepackage{listings}          % code listings
+\usepackage{tikz}              % architecture diagram (fig:architecture)
+\usetikzlibrary{arrows.meta,positioning}
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage[hidelinks]{hyperref}
@@ -70,31 +72,36 @@
 \maketitle
 
 \begin{abstract}
-% DRAFT abstract (~250 w), 2026-07-18 — leads with the finding, per feedback.
+% Rewritten 2026-08-04 — leads with the three-model finding.
 Retrieval-augmented generation is the standard remedy for hallucination in
-medical question answering, but this dissertation finds that retrieval is not
-a free safety net: on multiple-choice questions a quantised 3B model already
-answers correctly, retrieved context \emph{broke} 46 answers and fixed only
-13. Selective retrieval is therefore studied not as a cost optimisation but
-as protection. A training-free three-gate ensemble --- mean token entropy,
+medical question answering, but this dissertation finds that retrieval is
+not a free safety net, and that the harm \emph{grows} with model capability:
+on multiple-choice questions the retrieved context broke \breakLlama{}
+previously-correct answers on a quantised 3B model and \breakQwenFourteen{}
+on a 14B model, against \fixLlama{} and \fixQwenFourteen{} fixed. Selective
+retrieval is therefore studied not as a cost optimisation but as
+protection. A training-free three-gate ensemble --- mean token entropy,
 top-two logit margin, and a two-draft hallucination probe --- decides per
-query whether to retrieve, requiring no fine-tuning, no labelled data, and no
-second model, targeting fully offline, CPU-only clinical deployments. On 200
-MIRAGE multiple-choice questions over a 425,847-chunk medical corpus, the
-gated policy reaches \accPfiveMcq{} against \accPoneMcq{} for
-always-retrieve at half the retrieval calls (\retPfiveMcq{}); the cost
-halving is exact, while the accuracy gain (\diffPfivePone{}pp, 95\% CI
-\diffPfivePoneCI{}) is suggestive rather than established. On the questions
-retrieval poisons, the gate's skip decision scored 19/19. Three further
-findings shape the conclusions: literature-default gate thresholds are
-physically unreachable on a quantised model and must be recalibrated per
-model; on open-ended PubMedQA the ordering inverts and retrieval helps
-(gated $F_1$ \fOnePfiveOpen{} versus closed-book \fOnePthreeOpen{}); and no
-policy clears even the \barLow{} low-risk clinical bar --- closed-book tops
-out at \accPthreeMcq{}, quantifying an \gapToLowBar{}pp distance between
-this deployment class and clinical acceptability. All reported numbers are
-generated from raw run logs under a drift-guarded, 180+-test reproducibility
-harness.
+query whether to retrieve, requiring no fine-tuning, no labelled data and no
+second model, targeting fully offline deployments that run on a single
+laptop without a GPU. The pipeline is evaluated on 200 MIRAGE
+multiple-choice and 200 PubMedQA open-ended questions over a 425,847-chunk
+medical corpus, at three model scales (3B, 7B, 14B) held at identical
+quantisation. Gating beats always-retrieve at every scale ---
+\accPfiveMcq{} against \accPoneMcq{} at 3B on half the retrieval calls, and
+\accQwenFourteenPfiveMcq{} against \accQwenFourteenPoneMcq{} at 14B, where
+the advantage is statistically significant (\diffFourteenPfivePone{}pp, 95\%
+CI \diffFourteenPfivePoneCI{}). On the 3B questions retrieval poisons, the
+gate's skip decision scored 19/19. Three further findings shape the
+conclusions: literature-default gate thresholds are physically unreachable
+on quantised models, and non-transfer recurs prospectively at every new
+scale and across question formats; the open-ended policy ordering inverts
+between 3B and the larger models; and closed-book capability plateaus
+(\accPthreeMcq{} $\rightarrow$ \accQwenPthreeMcq{} $\rightarrow$
+\accQwenFourteenPthreeMcq{}), clearing the \barLow{} low-risk clinical bar
+at 7B but leaving the \barMedium{} medium-risk bar unreachable by scale
+alone. All reported numbers are generated from raw run logs under a
+drift-guarded, 227-test reproducibility harness.
 \end{abstract}
 
 % \chapter*{Acknowledgements}  % optional, ~100 words
@@ -113,8 +120,11 @@ harness.
 \input{chapters/methodology}
 \input{chapters/implementation}
 \input{chapters/evaluation}
-\input{chapters/qwen_scaling}
-\input{chapters/model_comparison}
+\input{chapters/scaling}
+% --- RETIRED 2026-08-04: qwen_scaling + model_comparison merged into
+% chapters/scaling.tex (kept in git history; duplicate labels would clash).
+% \input{chapters/qwen_scaling}
+% \input{chapters/model_comparison}
 \input{chapters/discussion}
 \input{chapters/lsep}
 \input{chapters/conclusion}
