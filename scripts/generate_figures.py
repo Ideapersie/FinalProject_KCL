@@ -309,10 +309,10 @@ def _member_signals(fname: str) -> Dict[str, dict]:
 
 
 def fig_scaling() -> None:
-    """Accuracy against the retrieval budget actually spent, for both models.
+    """Accuracy against the retrieval budget actually spent, for all models.
 
     One axis, one measure. The x-position is the realised retrieval rate rather
-    than a policy name, which is what makes the budget mismatch visible: the two
+    than a policy name, which is what makes the budget mismatch visible: the
     P5 points do not sit above one another.
     """
     series = [
@@ -351,7 +351,7 @@ def fig_scaling() -> None:
                   if plt.rcParams["text.usetex"] else
                   "retrieval budget actually spent (% of queries)")
     ax.set_ylabel("MCQ accuracy (%)")
-    ax.set_title("Retrieval costs accuracy on this corpus — for both model scales")
+    ax.set_title("Retrieval costs accuracy on this corpus — at all three model scales")
     ax.grid(True, alpha=0.25, linewidth=0.6)
     ax.set_axisbelow(True)
     for side in ("top", "right"):
