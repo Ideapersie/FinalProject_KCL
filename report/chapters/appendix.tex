@@ -8,20 +8,55 @@
 \section{Run Commands}
 \label{app:commands}
 
-Each experiment is fully specified by a configuration file plus explicit
-index paths. Representative commands:
-% VERIFY flags against scripts/run_experiment.py --help before submission.
+Each experiment is fully specified by the layered configuration files
+(policy, experiment, hardware, and --- for the scaling arm --- model) plus
+explicit index paths and an output log. Representative commands:
 
-\begin{lstlisting}[language=bash,caption={Main MCQ runs on the real corpus.}]
+\begin{lstlisting}[language=bash,caption={Main MCQ runs on the real corpus (3B, CPU).}]
 python scripts/run_experiment.py \
-  --config configs/experiments/mirage_medcorp.yaml \
+  --policy     configs/policies/p1_always_retrieve.yaml \
+  --experiment configs/experiments/mirage_medcorp.yaml \
+  --hardware   configs/hardware_medium.yaml \
+  --dataset    data/raw/mirage/benchmark.json \
+  --model      models/Llama-3.2-3B-Instruct-Q4_K_M.gguf \
   --bm25-index indexes/bm25_medcorp_tp.pkl \
-  --faiss-index indexes/faiss_medcorp_tp
+  --faiss-index indexes/faiss_medcorp_tp \
+  --retrieval-mode hybrid --max-questions 200 \
+  --output     results/raw_logs/p1_medcorp_mcq.jsonl
+
 python scripts/run_experiment.py \
-  --config configs/experiments/mirage_p5_calibrated.yaml \
+  --policy     configs/policies/p5_gated_entropy.yaml \
+  --experiment configs/experiments/mirage_p5_calibrated.yaml \
+  --hardware   configs/hardware_medium.yaml \
+  --dataset    data/raw/mirage/benchmark.json \
+  --model      models/Llama-3.2-3B-Instruct-Q4_K_M.gguf \
   --bm25-index indexes/bm25_medcorp_tp.pkl \
-  --faiss-index indexes/faiss_medcorp_tp
+  --faiss-index indexes/faiss_medcorp_tp \
+  --retrieval-mode hybrid --max-questions 200 \
+  --output     results/raw_logs/p5_medcorp_mcq.jsonl
 \end{lstlisting}
+
+The scaling runs are the identical command with two additions: a
+\texttt{--model-config} naming the model's chat format and calibrated gate
+thresholds, and the corresponding GGUF file.
+
+\begin{lstlisting}[language=bash,caption={Scaling arm (Qwen2.5-14B); only the model and its config change.}]
+python scripts/run_experiment.py \
+  --policy       configs/policies/p5_gated_entropy.yaml \
+  --experiment   configs/experiments/mirage_p5_calibrated.yaml \
+  --hardware     configs/hardware_medium.yaml \
+  --model-config configs/models/qwen14b.yaml \
+  --dataset      data/raw/mirage/benchmark.json \
+  --model        models/Qwen2.5-14B-Instruct-Q4_K_M.gguf \
+  --bm25-index   indexes/bm25_medcorp_tp.pkl \
+  --faiss-index  indexes/faiss_medcorp_tp \
+  --retrieval-mode hybrid --max-questions 200 \
+  --output       results/raw_logs/p5_qwen14b_mcq.jsonl
+\end{lstlisting}
+
+Both are wrapped by \texttt{scripts/run\_overnight.bat}, which re-launches
+each step until its log holds all 200 records --- safe because runs resume by
+skipping already-logged \texttt{question\_id}s.
 
 \begin{lstlisting}[language=bash,caption={Corpus build (resumable, shard-checkpointed).}]
 python scripts/build_medcorp.py --sources textbooks pubmed \
@@ -72,9 +107,8 @@ at load time via the canonical loader (\texttt{evaluation/loading.py}).
 \section{Test Inventory}
 \label{app:tests}
 
-184 tests pass at the time of writing
-% VERIFY with: pytest -q
-spanning unit (configuration, retrieval, gates, policies, scoring, metrics),
+227 tests pass at the time of writing (\texttt{pytest -q}, 95\,s, no model
+required), spanning unit (configuration, retrieval, gates, policies, scoring, metrics),
 integration (open-ended path end-to-end), and regression suites (number
 drift guard; P3 paired-run corpus independence). The suite runs without the
 model or any dataset download via \texttt{MockLLMBackend}:

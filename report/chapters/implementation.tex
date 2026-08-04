@@ -98,9 +98,12 @@ format for the loaded model. The refactor that introduced this abstraction
 could have silently invalidated every existing result; it was therefore
 verified to produce byte-identical prompts for all eight prompt types under
 the default Llama format before merging, which is precisely why the existing
-Llama-3.2-3B logs remain valid. This is the mechanism through which a future
-cross-model study (Section~\ref{sec:conc-future}) can run without touching
-policy or gate code.
+Llama-3.2-3B logs remain valid. This is the mechanism through which the
+scaling study (Chapter~\ref{ch:scaling}) ran without touching policy or
+gate code: the Qwen2.5-7B and 14B experiments changed only the model file,
+the chat format and the gate thresholds, executing the identical pipeline
+on a hosted T4 GPU from a resumable notebook, with a four-check smoke test
+gating each long run.
 
 \section{Building the Medical Corpus}
 \label{sec:impl-corpus}
@@ -160,10 +163,10 @@ metric.
 The project treats reproducibility as a first-class deliverable, and this
 section documents the machinery rather than asserting the virtue.
 
-\paragraph{A model-free test suite.} 184 unit and integration tests pass at
-the time of writing, executing in under a second without the multi-gigabyte
-model, via the mock backend's deterministic text and synthetic logit
-distributions (peaked and uniform variants exercise both gate decisions).
+\paragraph{A model-free test suite.} 227 unit and integration tests pass at
+the time of writing, executing without the multi-gigabyte model via the mock
+backend's deterministic text and synthetic logit distributions (peaked and
+uniform variants exercise both gate decisions).
 Coverage spans configuration merge semantics, retrieval ranking and index
 round-trips, loaders and risk tagging, every gate's threshold and abstain
 behaviour, ensemble vote arithmetic and degraded-mode fallback, both P5

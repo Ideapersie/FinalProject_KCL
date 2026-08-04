@@ -227,10 +227,8 @@ shows its value here is \emph{protection} --- the gate is not detecting
 answer is already right, which is a different and harder property.
 
 Two cautions temper the claim. First, $n=19$ is small: a 95\% Wilson
-interval on 19/19 spans roughly [83\%, 100\%], so the honest statement is a
+interval on 19/19 spans [83.2\%, 100\%], so the honest statement is a
 striking observation on a small subset, not a guarantee.
-% VERIFY: Wilson bound computed as [0.833, 1.0] for 19/19 — recompute via
-% evaluation/metrics.py wilson_interval before submission.
 Second, the gate still \emph{retrieved} on 27 of the 46 poisoned questions
 --- it is protective where it skips, but it does not yet skip everywhere it
 should. The gate is a partial shield, and claiming more would overreach.
@@ -349,8 +347,8 @@ tops out \gapToLowBar{}pp below the lowest bar. The dissertation's honest
 output on this axis is a \emph{quantified distance to clinical
 acceptability} for a fully offline, CPU-only configuration --- a number that
 is useful precisely because nobody should deploy without knowing it. That
-attribution is tested directly by the scaling arm
-(Chapter~\ref{ch:qwen}): on the identical benchmark the 7B model clears the
+attribution is tested directly by the scaling study
+(Chapter~\ref{ch:scaling}): on the identical benchmark the 7B model clears the
 low-risk bar --- closed-book P3 at \accQwenPthreeMcq{} and gated P5 at
 \accQwenPfiveMcq{}, both above \barLow{} --- so the envelope is empty here
 because of scale, not method, and ceases to be empty at low risk once capability
@@ -394,21 +392,15 @@ to four, an estimated $\sim$20\% latency saving) and evaluating a probe-free
 logit-only configuration are the obvious optimisations, quantified as future
 work (Section~\ref{sec:conc-future}).
 
-\section{Cross-Model Generalisation}
+\section{From One Model to Three}
 \label{sec:eval-crossmodel}
-% ================= PLACEHOLDER — EXPERIMENT NOT YET RUN =================
-% All prerequisites are built and verified (chat-format abstraction proven
-% byte-identical for existing logs; Qwen 7B/14B configs; smoke_test_model.py;
-% Colab notebook). If the Qwen-7B run (P3+P5, MCQ+open, own calibration)
-% completes before submission, report here:
-%   - whether calibration non-transfer recurs (expect: different signal
-%     range, different tau)
-%   - whether selective-beats-always survives at 7B
-%   - whether the closed-book ceiling rises toward the safety bars
-% If the run does NOT happen, DELETE this section entirely and rely on the
-% single-model limitation in §6.2 + future work in §8.2. Do not leave a
-% stub section in the submitted PDF.
-% ========================================================================
 
-\emph{[Placeholder --- pending Qwen-7B scaling run; see source comment.
-Delete this section if the run is not completed before submission.]}
+Every analysis in this chapter used the 3B reference model, and several of
+its findings are claims about the \emph{method} rather than about that
+model: that thresholds must be calibrated per model, that retrieval
+distracts, that selective retrieval beats always-retrieve. A method claim
+supported by one instance is an anecdote. Which of these findings survive
+--- and which turn out to be artefacts of a small model --- is the question
+Chapter~\ref{ch:scaling} answers, by replicating the pipeline unchanged
+(same corpus, same questions, same policy code, same quantisation) at 7B
+and 14B.

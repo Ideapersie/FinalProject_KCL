@@ -1,7 +1,6 @@
 % =====================================================================
 %  Chapter 2 — Background and Related Work  (~2,500 words)
-%  DRAFT generated 2026-07-18. Citation keys match references.bib; verify
-%  every [VERIFY] comment against the actual paper before submission.
+%  Citation keys match references.bib; all entries verified 2026-08-04.
 % =====================================================================
 \chapter{Background and Related Work}
 \label{ch:background}
@@ -52,7 +51,6 @@ router needs labelled complexity data, and a second model must be deployed
 alongside the first. Reinforcement-learning approaches such as
 \textbf{SmartRAG} \citep{smartrag2025} optimise the retrieval policy against
 task reward, requiring a full training loop.
-% [VERIFY] SmartRAG venue/year before submission.
 
 At the training-free end sits \textbf{TARG} \citep{targ2025}, the direct
 methodological ancestor of this work. TARG derives the retrieval decision
@@ -102,63 +100,79 @@ token-level $F_1$. The multiple-choice/open-ended contrast turns out to be a
 finding in itself (Section~\ref{sec:eval-main}): retrieval hurts where the
 model already knows (MCQ) and helps where it does not (PubMedQA).
 
-For scale, \citet{singhal2023medpalm} demonstrate that very large models
-reach clinician-adjacent accuracy on medical QA --- context for interpreting
-the capability ceiling that a 3B quantised model exhibits in
-Chapter~\ref{ch:eval}.
+For scale, \citet{singhal2023medpalm} demonstrate that large models encode
+substantial clinical knowledge, and Med-PaLM~2 reaches 86.5\% on MedQA with
+physician-preferred answers on most clinical axes
+\citep{singhal2025medpalm2} --- but both results come from models of
+hundreds of billions of parameters behind cloud APIs. They bound what is
+possible for the deployment class studied here from above, and make the
+capability ceilings measured in Chapters~\ref{ch:eval}
+and~\ref{ch:scaling} interpretable: the question this dissertation asks is
+not whether frontier models can answer medical questions, but how far the
+models that can actually run in a disconnected clinic fall short, and
+whether retrieval policy narrows or widens that gap.
 
 \section{Uncertainty, Calibration and Confidence Signals}
 \label{sec:bg-calibration}
 
-The gate needs a per-query estimate of whether the model knows the answer.
-Three families of signal exist, and each has a characteristic failure mode;
-this section's catalogue of failure modes is the design argument for using
-three signals rather than one (Section~\ref{sec:method-gates}).
+A retrieval gate needs a per-query estimate of whether the model knows the
+answer, and the literature offers three families of signal to build one
+from. \textbf{Token-distribution statistics} --- the entropy of the
+next-token distribution and the margin between its top candidates --- are
+the cheapest, since they fall out of a draft generation the model performs
+anyway; they are the signals TARG thresholds \citep{targ2025}.
+\textbf{Verbalized confidence} asks the model to report its own certainty:
+\citet{kadavath2022} show that large models are usefully calibrated at
+self-assessment, but that this ability degrades sharply with model size ---
+a finding that matters here, because it disqualifies the technique for the
+3B-parameter deployment class this project targets.
+\textbf{Consistency-based signals} test whether the model's answer is
+stable under resampling or reframing: self-consistency
+\citep{wang2023selfconsistency} demonstrates that agreement across many
+samples tracks correctness. Calibration in the formal sense --- alignment
+between confidence and empirical accuracy --- is measured by expected
+calibration error \citep{guo2017calibration}. How these three families are
+adapted into this project's gate ensemble, and the characteristic failure
+mode of each that motivates using all three at once, is a design matter and
+is presented with the system design (Section~\ref{sec:method-gates}).
 
-\textbf{Token entropy} measures the spread of the model's full next-token
-distribution, averaged over a draft generation. Its failure mode is
-\emph{benign lexical freedom}: entropy is inflated wherever multiple phrasings
-are equally acceptable --- formatting tokens, function words, punctuation ---
-regardless of whether the underlying \emph{fact} is certain. This
-dissertation's token-level attribution analysis
-(Section~\ref{sec:eval-attribution}) demonstrates exactly this failure on
-real clinical text: entropy concentrates on filler tokens while the
-clinically decisive tokens are generated with near-certainty.
-
-\textbf{Logit margin} --- the gap between the top-two token probabilities ---
-measures decisiveness at the decision boundary rather than spread across the
-whole distribution. Its failure mode is \emph{confident error}: a model that
-has internalised a wrong fact produces a large margin on a wrong answer, and
-the gate reads certainty.
-
-\textbf{Verbalized confidence} asks the model to report its own certainty
-\citep{kadavath2022}. Large models can be usefully calibrated at this;
-small models are not --- self-reports from a 3B model are close to
-uninformative. For this reason the present work \emph{replaces} verbalized
-confidence with a stability test in the spirit of self-consistency
-\citep{wang2023selfconsistency}: generate two drafts under different prompt
-framings and measure their agreement. Genuinely held knowledge is invariant
-to surface framing; a guess is not. Reduced from many-sample majority voting
-to a two-draft agreement test, this becomes cheap enough to run per query on
-CPU.
-
-Calibration in the formal sense --- alignment between stated confidence and
-empirical accuracy --- is measured by expected calibration error
-\citep{guo2017calibration}, reported alongside accuracy in
-Chapter~\ref{ch:eval}. The deeper calibration question in this project,
-however, is a transfer question: thresholds for entropy and margin published
-for full-precision general-domain models turn out not to transfer to a
-quantised domain-specific setting at all
-(Section~\ref{sec:eval-calibration}), which is itself a contribution.
+Two transfer questions hang over any threshold-based use of these signals,
+and both are underexplored in the literature. First, published operating
+thresholds are calibrated on full-precision, general-domain models;
+quantisation is known to distort exactly the quantities being thresholded.
+\citet{proskurina2024quantization} show that 4-bit quantisation reduces
+model confidence on true labels and increases calibration error, with the
+strongest distortion on samples where the full-precision model was already
+uncertain. Whether thresholds survive the move to a quantised model is
+therefore an open empirical question --- this dissertation answers it in
+the negative (Section~\ref{sec:eval-calibration}). Second, thresholds are
+typically fitted on one task format and reported as if model-general; the
+scaling study finds they are \emph{task}-specific as well
+(Section~\ref{sec:scaling-saturation}).
 
 \section{Efficiency and Constrained Deployment}
 \label{sec:bg-efficiency}
 
-The energy cost of neural inference is a first-order concern, not a footnote
-\citep{strubell2019}; per-query energy measurement for LLM workloads is an
-active area \citep{wilkins2024}. On CPU-only hardware, generation over a
-long retrieved context dominates both latency and energy, which is what gives
-retrieval-skipping its value proposition.
+The deployment gap that motivates this work is well documented. The ITU's
+most recent connectivity figures put 2.2 billion people offline, with
+Internet use at 23\% of the population in low-income countries and 14\%
+among their rural residents \citep{itu2025factsfigures}; 666 million people
+lack electricity altogether \citep{sdg7tracking2025}. Clinical
+decision-support research aimed at these settings has begun to treat
+offline-first operation as a hard requirement rather than a degraded mode:
+\citet{walusimbi2026aletheia} build an on-device diagnostic-support system
+for sub-Saharan African district hospitals on precisely the grounds argued
+in Chapter~\ref{ch:intro} --- that connectivity-dependent tools are
+structurally unavailable where physician-to-patient ratios are worst. That
+line of work concentrates on diagnosis; the question of when such a system
+should consult an external corpus, this project's subject, is to the
+author's knowledge unexamined in the offline-clinical setting.
+
+Within that envelope, the energy cost of neural inference is a first-order
+concern, not a footnote \citep{strubell2019}; per-query energy measurement
+for LLM workloads is an active area \citep{wilkins2024}. On CPU-only
+hardware, generation over a long retrieved context dominates both latency
+and energy, which is what gives retrieval-skipping its value proposition.
 
 The enabling technology for this entire deployment class is quantisation.
 GGUF-format 4-bit quantised models served by \texttt{llama.cpp}

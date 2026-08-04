@@ -25,22 +25,41 @@ trail a clinician could audit. Any system intended even for clinical
 \emph{education} must take a position on when parametric knowledge alone is
 trustworthy.
 
-The second is \emph{cost}. On the hardware this project targets, retrieval is
+The second is \emph{deployment reality}, and it carries more weight in this
+dissertation than the word ``deployment'' usually implies. The populations
+that stand to gain most from an always-available clinical question-answering
+assistant are precisely the ones the cloud-first architecture of modern LLM
+services excludes. The ITU estimates that 2.2 billion people remain offline
+as of 2025; in low-income countries only 23\% of the population uses the
+Internet at all, and among rural residents the figure falls to 14\% ---
+little more than a third of the urban share
+\citep{itu2025factsfigures}. Connectivity is not even the first missing
+layer: more than 666 million people live without electricity, 85\% of them
+in sub-Saharan Africa \citep{sdg7tracking2025}, and where networks do reach,
+access remains unaffordable in roughly 60\% of low- and middle-income
+countries \citep{itu2025factsfigures}. In such regions --- rural clinics,
+hospital training wards, and entire districts where connectivity and power
+are intermittent or absent --- there is no cloud model to call, no GPU to
+accelerate inference, and no realistic prospect of either arriving soon;
+recent work on clinical decision support for these settings reaches the
+same offline-first conclusion \citep{walusimbi2026aletheia}. The same
+architecture is also what air-gapped, data-governed environments require,
+where policy rather than infrastructure forbids sending clinical text to a
+third-party API. The systems evaluated in this dissertation take the
+constraint literally: the reference configuration --- a 4-bit quantised
+model, exact CPU-side vector search, and a 426K-chunk corpus with its
+indexes --- runs end-to-end on a single commodity laptop with no GPU and no
+network connection. Every design decision that follows, from quantisation
+to the training-free gate, is downstream of taking this deployment reality
+seriously rather than treating it as an afterthought.
+
+The third is \emph{cost}. On the hardware this project targets, retrieval is
 not free. A retrieving query on the CPU-only reference configuration takes on
 the order of \latPoneMcq{} of wall-clock time, dominated by the long-context
 generation over the retrieved passages; a closed-book answer to the same
 question takes a fraction of that. Multiplied over every query in a working
 day, always-retrieve is a substantial and often unnecessary expenditure of
 time and energy.
-
-The third is \emph{deployment reality}. The intended setting for this work is
-offline, CPU-only hardware: hospital training wards, rural clinics, hospitals
-in low- and middle-income countries, and air-gapped environments where data
-governance forbids sending clinical text to a third-party API. There is no
-cloud model to call and no GPU to accelerate retrieval-augmented inference.
-Every design decision in this project --- a 4-bit quantised 3B-parameter
-model, exact CPU-side vector search, energy profiling --- follows from taking
-this constraint seriously rather than treating it as an afterthought.
 
 These three pressures converge on a single question that is usually skipped:
 \emph{retrieval is neither free nor always helpful --- so when should a
@@ -79,8 +98,9 @@ candidates, and the stability of its answer under reframing.
 \section{Research Questions}
 \label{sec:intro-rqs}
 
-The evaluation in Chapter~\ref{ch:eval} is organised around four research
-questions, each of which the collected data can actually answer:
+The evaluation in Chapters~\ref{ch:eval} and~\ref{ch:scaling} is organised
+around five research questions, each of which the collected data can
+actually answer:
 
 \begin{description}
   \item[RQ1] How do always-retrieve, hybrid, closed-book and gated retrieval
@@ -94,6 +114,11 @@ questions, each of which the collected data can actually answer:
     members, and if so, why?
   \item[RQ4] How far is the best achievable policy from clinically acceptable
     accuracy at each level of question risk --- the \emph{safety envelope}?
+  \item[RQ5] Which of the findings are properties of one model and which are
+    properties of the \emph{method}: do calibration non-transfer, the
+    selective-retrieval advantage and the retrieval-distraction effect
+    persist as the model scales from 3B through 7B to 14B parameters, and
+    does scale alone close the distance to clinical acceptability?
 \end{description}
 
 % NOTE: the original plan's hardware-tier RQ is deliberately absent — tiers
@@ -102,7 +127,8 @@ questions, each of which the collected data can actually answer:
 \section{Contributions}
 \label{sec:intro-contributions}
 
-This dissertation makes six contributions, each anchored to specific evidence:
+This dissertation makes seven contributions, each anchored to specific
+evidence:
 
 \begin{enumerate}
   \item \textbf{A training-free retrieval-gating ensemble.} Three signals ---
@@ -127,14 +153,26 @@ This dissertation makes six contributions, each anchored to specific evidence:
     \textsc{retrieve} decision, 3/27 (11\%). The gate is protective precisely
     where retrieval is harmful (Section~\ref{sec:eval-protective}).
   \item \textbf{The safety envelope.} A risk-stratified analysis quantifying
-    the \emph{distance} between this system and clinical acceptability: the
-    best policy on the benchmark falls \gapToLowBar{}pp short of the
-    \barLow{} low-risk bar. The contribution is an honest measurement of that
-    distance, not a claim of clinical readiness
-    (Section~\ref{sec:eval-envelope}).
+    the \emph{distance} between this system and clinical acceptability: at
+    3B the best policy falls \gapToLowBar{}pp short of the \barLow{}
+    low-risk bar; at 7B and 14B the low-risk bar is cleared but the
+    \barMedium{} medium-risk bar is not. The contribution is an honest
+    measurement of that distance, not a claim of clinical readiness
+    (Sections~\ref{sec:eval-envelope} and~\ref{sec:scaling-bars}).
+  \item \textbf{A three-model scaling study.} The full pipeline replicated
+    on Qwen2.5-7B and Qwen2.5-14B at identical quantisation, corpus and
+    questions. Scale raises closed-book accuracy and then plateaus
+    (\accPthreeMcq{} $\rightarrow$ \accQwenPthreeMcq{} $\rightarrow$
+    \accQwenFourteenPthreeMcq{}); calibration non-transfer recurs
+    prospectively at every scale; retrieval-as-distraction \emph{grows} with
+    capability (\breakLlama{}, \breakQwenSeven{}, \breakQwenFourteen{}
+    broken answers); and at 14B the gated policy's advantage over
+    always-retrieve is statistically significant for the first time
+    (\diffFourteenPfivePone{}pp, 95\% CI \diffFourteenPfivePoneCI{})
+    (Chapter~\ref{ch:scaling}).
   \item \textbf{A reproducible evaluation harness.} Every reported number is
     generated from raw run logs into \LaTeX{} macros, guarded by a regression
-    test that fails the build on a hand-edited literal; 180+ unit tests run
+    test that fails the build on a hand-edited literal; 227 unit tests run
     without the model via a mock backend; runs are resumable and
     deterministic (Chapter~\ref{ch:impl}).
 \end{enumerate}
@@ -149,9 +187,12 @@ presents the system design: the policy space, the retrieval stack, and the
 three-gate ensemble with its hardware-aware degradation.
 Chapter~\ref{ch:impl} documents the implementation, with particular attention
 to the reproducibility machinery. Chapter~\ref{ch:eval} reports the
-evaluation: the main policy comparison, the calibration study, the
-distraction and protective-skip analyses, the gate ablation, token-level
-entropy attribution, and the safety envelope. Chapter~\ref{ch:discussion}
+single-model evaluation: the main policy comparison, the calibration study,
+the distraction and protective-skip analyses, the gate ablation, token-level
+entropy attribution, and the safety envelope. Chapter~\ref{ch:scaling}
+replicates the pipeline at 7B and 14B and reads the three models as a
+scaling curve --- what rises, what plateaus, what inverts, and what it means
+that the medium-risk bar stays out of reach. Chapter~\ref{ch:discussion}
 synthesises the findings and confronts their limitations.
 Chapter~\ref{ch:lsep} addresses the legal, social, ethical and professional
 dimensions of deploying (or declining to deploy) such a system.

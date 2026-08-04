@@ -25,24 +25,19 @@ standard RAG assumption, that context is at worst neutral, is false for this
 model class.
 
 A natural objection is that this ``distraction'' is really \emph{absence}:
-perhaps retrieval hurts simply because the corpus does not contain the answer,
-so the model is handed irrelevant text and misled. The three-model data rules
-this out as the primary cause. If the corpus lacked answers, retrieval could
-never turn a wrong answer right --- yet always-retrieve \emph{fixes}
-\fixLlama{}, \fixQwenSeven{} and \fixQwenFourteen{} closed-book errors on the
-3B, 7B and 14B respectively, so the corpus demonstrably supplies answers the
-model did not have. And retrieval measurably \emph{helps} the weakest model on
-open-ended questions (P1 \fOnePoneOpen{} over P3 \fOnePthreeOpen{}), which is
-impossible if the information is not there. The decisive evidence is the
-direction of the harm with scale: the number of correct answers retrieval
-\emph{breaks} rises from \breakLlama{} on the 3B to \breakQwenFourteen{} on the
-14B, and the harm ratio from \harmRatioLlama{} to \harmRatioQwenFourteen{}
-broken per fixed. A corpus that merely lacked information would damage a
-stronger model \emph{less}, because the stronger model has less to gain from
-retrieval and can fall back on what it knows; instead the strongest model is
-harmed the most, because it has the most correct parametric knowledge to be
-displaced. Absence cannot produce that gradient; displacement is its
-signature.
+perhaps retrieval hurts simply because the corpus does not contain the
+answer. Three lines of evidence rule that out as the primary cause. If the
+corpus lacked answers, retrieval could never turn a wrong answer right ---
+yet it \emph{fixes} \fixLlama{}, \fixQwenSeven{} and \fixQwenFourteen{}
+closed-book errors at 3B, 7B and 14B. Retrieval measurably \emph{helps} the
+weakest model on open-ended questions (P1 \fOnePoneOpen{} over P3
+\fOnePthreeOpen{}), which is impossible if the information is not there. And
+decisively, the harm \emph{grows} with capability
+(Section~\ref{sec:scaling-mechanism}): a corpus that merely lacked
+information would damage a stronger model \emph{less}, since that model can
+fall back on what it knows, yet the strongest model is harmed the most,
+because it has the most correct parametric knowledge to be displaced.
+Absence cannot produce that gradient; displacement is its signature.
 
 If retrieval can be poison, then the value of a gate is not primarily
 \emph{efficiency} --- the framing the adaptive-retrieval literature has
@@ -82,8 +77,8 @@ retrieval-cost halving is a count and is exact for this sample. The
 high-risk stratum ($n=6$, Wilson CIs $\approx \pm 30$pp) supports no
 between-policy comparison at all.
 
-\paragraph{Scaling arm: three points, one family.} The scaling arm
-(Chapters~\ref{ch:qwen}--\ref{ch:comparison}) runs the full pipeline at 3B, 7B
+\paragraph{Scaling arm: three points, one family.} The scaling study
+(Chapter~\ref{ch:scaling}) runs the full pipeline at 3B, 7B
 and 14B and confirms calibration non-transfer prospectively at each new scale.
 The ordering P3 $>$ P5 $>$ P1 reproduces on multiple-choice at all three scales,
 and the open-ended ordering \emph{inverts} between the smallest model
@@ -149,23 +144,19 @@ encodes only the former.
 condition in this study scores between $0.19$ and $0.26$ mean token-$F_1$
 while the underlying behaviour ranges from answering essentially every
 question to declining \retPoneOpen{} of them. Declining costs almost
-nothing: on always-retrieve, refusals average $0.217$ and substantive answers
-$0.244$. Token-$F_1$ against a paragraph-length gold answer rewards fluent
-medical prose whether or not it addresses the question, so the metric cannot
-separate a good answer from a well-phrased refusal. Open-ended conclusions in
-this dissertation are therefore weakly supported in \emph{either} direction;
-this is a measurement limitation, not a null result, and a metric with
-sharper discrimination (entailment against the gold claim, or human
-adjudication) would be required to settle it.
-
-\paragraph{Corpus--benchmark mismatch on open-ended questions.} PubMedQA
-asks about the findings of specific studies; the MedCorp corpus
-(StatPearls and textbooks) does not contain them. Retrieval therefore raises
-the refusal rate from \retPthreeOpen{}-adjacent levels under closed-book to
-\retPoneOpen{} under always-retrieve, because the RAG prompt instructs the
-model to state uncertainty when the context lacks the answer --- which it
-usually does. The open-ended arm is thus partly a measurement of corpus
-coverage rather than of gating.
+nothing: on always-retrieve, refusals average $0.217$ and substantive
+answers $0.244$. Token-$F_1$ against a paragraph-length gold answer rewards
+fluent medical prose whether or not it addresses the question, so the metric
+cannot separate a good answer from a well-phrased refusal, and supports
+\emph{relative} comparison between policies only, never absolute quality
+claims. Open-ended conclusions are therefore weakly supported in
+\emph{either} direction --- a measurement limitation rather than a null
+result, which a sharper metric (entailment against the gold claim, or human
+adjudication) would be required to settle. The problem compounds with a
+corpus--benchmark mismatch: PubMedQA asks about the findings of specific
+studies, which the textbook-and-abstract corpus largely does not contain, so
+retrieval raises the refusal rate to \retPoneOpen{} under always-retrieve
+and the open-ended arm partly measures corpus coverage rather than gating.
 
 \paragraph{Entropy gate omits the draft's first token.} The entropy gate
 slices the logit buffer one row late, so $\bar{H}$ averages the draft's
@@ -191,11 +182,8 @@ planned dataset proved unreachable. MIRAGE is entirely multiple-choice,
 which is precisely why the open-ended complement matters --- but one dataset
 per question type limits generality.
 
-\paragraph{Metric limits.} Token-level $F_1$ between paragraph-length
-answers is harsh in absolute terms; the reported values (0.19--0.22) support
-\emph{relative} comparison between policies, not absolute quality claims.
-Energy figures are \texttt{codecarbon} software estimates, not hardware
-power measurements.
+\paragraph{Energy measurement.} Energy figures are \texttt{codecarbon}
+software estimates, not metered hardware power measurements.
 
 \paragraph{Risk tagger.} The clinical-risk tagger is a keyword rule set ---
 chosen deliberately for auditability, since a learned classifier would
@@ -211,48 +199,36 @@ edges, though at current accuracy no defensible bar would be met.
 \subsection{Off-by-one in the entropy gate's logit slice}
 \label{sec:limitation-entropy-offset}
 
-The entropy gate reads the model's per-token logit distributions from
-\texttt{llama-cpp-python}'s \texttt{\_scores} buffer, slicing the rows that
-correspond to generated tokens as
-\texttt{\_scores[n\_prompt : n\_prompt + max\_tokens]}, where
+The entropy gate reads per-token logit distributions from
+\texttt{llama-cpp-python}'s \texttt{\_scores} buffer, slicing generated-token
+rows as \texttt{\_scores[n\_prompt : n\_prompt + max\_tokens]} where
 \texttt{n\_prompt} is \texttt{len(tokenize(prompt))}. That start index is one
-row too high. \texttt{tokenize()} prepends a beginning-of-sequence token that
-the completion's context does not contain, so the prompt occupies
-$n_{\text{prompt}} - 1$ rows rather than $n_{\text{prompt}}$. The discrepancy
-was confirmed directly: because decoding is greedy at temperature $0$, the
-$\arg\max$ of each logit row must be the token that row produced, and for a
-48-token draft the slice beginning at $n_{\text{prompt}} - 1$ reproduced all 48
-generated tokens, while the slice beginning at $n_{\text{prompt}}$ reproduced
-none of them.
+row too high: \texttt{tokenize()} prepends a beginning-of-sequence token the
+completion's context does not contain, so the prompt occupies
+$n_{\text{prompt}} - 1$ rows. The discrepancy was confirmed directly ---
+under greedy decoding the $\arg\max$ of each logit row must be the token that
+row produced, and for a 48-token draft the slice beginning at
+$n_{\text{prompt}} - 1$ reproduced all 48 generated tokens while the slice
+beginning at $n_{\text{prompt}}$ reproduced none. The practical consequence
+is that $\bar{H}$ averages generated tokens $2 \ldots N$ rather than
+$1 \ldots N$. On a representative clinical question the omitted first token
+was the draft's highest-entropy one ($H = 3.28$ nats), and excluding it
+lowered the gate signal from $0.763$ to $0.709$ against $\tau = 0.70$.
 
-The practical consequence is that $\bar{H}$ is an average over generated tokens
-$2 \ldots N$ rather than $1 \ldots N$: the first generated token's entropy is
-never included. On a representative clinical question the omitted token was in
-fact the highest-entropy one in the draft ($H = 3.28$ nats), and excluding it
-lowered the gate signal from $0.763$ to $0.709$ against a threshold of
-$\tau = 0.70$.
-
-This does not invalidate the results reported here, for three reasons. The bias
-is deterministic and applies identically to every question, so it is a
-consistent redefinition of the signal rather than a source of noise. The
-threshold $\tau$ was calibrated on this same quantity, so the retrieval budget
-it produces is the budget actually delivered. And the budget-matching procedure
-used to transfer thresholds across model scales inherits the identical bias on
-both models, so the cross-model comparison remains like-for-like. What the
-reader should take from this is a narrower definitional claim: the quantity
-this work calls mean draft entropy is the mean over the draft's second and
-subsequent tokens.
-
-The defect was found late enough in the project that correcting it was judged
-the greater risk. Re-slicing the buffer would shift $\bar{H}$ on every question
---- upward, since the omitted first token tends to be high-entropy --- which
-would move an unknown number of near-threshold decisions across $\tau$, alter
-the realised retrieval budget, and require the full calibration and evaluation
-to be re-run for both models. The gate was therefore left as evaluated, and the
-demonstration interface reports the same $\bar{H}$ as the logs and renders its
-token-level heatmap over exactly the tokens that average covers. A corrected
-slice is the first item of future work, and the correction is a single-line
-change once there is time to re-run the calibration behind it.
+This does not invalidate the reported results. The bias is deterministic and
+identical across every question and every model, so it is a consistent
+redefinition of the signal rather than a source of noise; $\tau$ was
+calibrated on the same shifted quantity, so the retrieval budget it produces
+is the budget actually delivered; and the budget-matching procedure inherits
+the identical bias at all three scales, keeping the cross-model comparison
+like-for-like. What narrows is the definitional claim: the quantity this work
+calls mean draft entropy is the mean over the draft's second and subsequent
+tokens. Correcting it was judged the greater risk at the point of discovery,
+since re-slicing would shift $\bar{H}$ upward on every question, move an
+unknown number of near-threshold decisions across $\tau$, and require full
+recalibration and re-evaluation on all three models. A corrected slice is the
+first item of future work and is a single-line change once there is time to
+re-run the calibration behind it.
 
 \section{Implications for Offline Clinical Deployment}
 \label{sec:disc-deployment}
@@ -261,11 +237,15 @@ What should a practitioner take from this work?
 
 \paragraph{Do not deploy at this scale.} The unambiguous first implication:
 a quantised 3B model, gated or not, is \gapToLowBar{}pp short of even the
-lowest stipulated bar, and the safety envelope is empty. This system --- and
-by extension the current generation of fully offline, CPU-only clinical QA
-at this model size --- is not fit for clinical decision support, and the
-honest output of the evaluation is the measured distance rather than a
-product. Publishing that distance is the responsible finding.
+lowest stipulated bar, and its safety envelope is empty. Scaling improves
+but does not resolve this: the 7B and 14B clear the low-risk bar only, the
+medium-risk bar remains out of reach at every scale tested, and the
+capability curve is flattening as it approaches it
+(Section~\ref{sec:scaling-bars}). This deployment class --- fully offline,
+quantised, commodity-hardware clinical QA --- is not fit for clinical
+decision support beyond the lowest-risk stratum, and the honest output of
+the evaluation is the measured distance rather than a product. Publishing
+that distance is the responsible finding.
 
 \paragraph{Where the method is useful today.} The gating approach earns its
 keep wherever retrieval is the expensive or risky resource and the model's

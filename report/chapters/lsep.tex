@@ -19,11 +19,12 @@ default toward the more cautious label. Safety asymmetry shaped the
 artefact, not just the write-up.
 
 The evaluation then returned a result that this chapter must state as
-plainly as the technical chapters do: the safety envelope is empty. No
-policy configuration evaluated here clears even the lowest stipulated
-accuracy bar, and therefore \textbf{this system must not be used for
-clinical decision support}, in education-adjacent settings included, without
-qualified human oversight. A dissertation that quantifies its own system's
+plainly as the technical chapters do: the safety envelope of the reference
+system is empty. At 3B no policy clears even the lowest stipulated accuracy
+bar; the larger models of Chapter~\ref{ch:scaling} clear the low-risk bar
+only, and none approaches the medium-risk bar. Therefore \textbf{this
+system must not be used for clinical decision support}, in
+education-adjacent settings included, without qualified human oversight. A dissertation that quantifies its own system's
 unfitness for deployment is making the safety-relevant contribution;
 concealing that distance would be the ethical failure.
 
@@ -88,7 +89,8 @@ consequences of that selection --- an acknowledged gap.
 The equity argument that motivates the project also carries its own warning.
 An offline CPU-only system is exactly the configuration that can run where
 GPUs, budgets and connectivity do not exist --- rural practice, LMIC
-clinics, training hospitals. Those settings have the most to gain from
+clinics, training hospitals, the settings where only 14\% of rural
+residents are online at all \citep{itu2025factsfigures}. Those settings have the most to gain from
 deployable clinical QA, and the least infrastructure to verify it. But
 Section~\ref{sec:eval-envelope} shows the present system does not meet even
 lenient safety bars, and shipping an unsafe system to under-resourced

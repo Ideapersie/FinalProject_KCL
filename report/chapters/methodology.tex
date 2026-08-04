@@ -14,7 +14,8 @@ The system is organised as a six-layer pipeline: configuration, data
 contracts, data ingestion, models and retrieval, policies and gating, and
 evaluation. One design principle governs the whole structure: \emph{each
 layer depends only on the layers beneath it and communicates exclusively
-through shared, typed dataclasses}. The practical consequence is that every
+through shared, typed dataclasses} (Figure~\ref{fig:architecture}). The
+practical consequence is that every
 component can be unit-tested in isolation against mock collaborators, and the
 retrieval gates --- the core novel contribution --- were developed against a
 stable, test-covered substrate rather than a moving target. The same
@@ -23,14 +24,40 @@ policy emits an identical, fully populated record per query, analyses such as
 the paired retrieval-distraction study (Section~\ref{sec:eval-distraction})
 can be run entirely from logs, without re-invoking the model.
 
-% TODO(figure): architecture diagram of the six layers. Suggest generating
-% with TikZ or exporting a simple diagram; place as fig:architecture.
-%\begin{figure}[t]
-%  \centering
-%  \includegraphics[width=0.8\linewidth]{results/figures/fig_architecture}
-%  \caption{The six-layer system architecture.}
-%  \label{fig:architecture}
-%\end{figure}
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}[
+    font=\small,
+    layer/.style={draw, rounded corners=2pt, minimum width=10.4cm,
+                  minimum height=0.82cm, align=center, fill=black!3},
+    novel/.style={layer, fill=blue!8, very thick},
+    arrow/.style={-{Latex[length=2mm]}, thick, black!55},
+  ]
+    \node[layer] (cfg)  at (0, 0)     {\textbf{Configuration} --- layered YAML $\rightarrow$ validated \texttt{ProjectConfig}};
+    \node[layer] (data) at (0,-1.05)  {\textbf{Data contracts} --- \texttt{UnifiedQuestion}, \texttt{PolicyResult}, \texttt{RunRecord}};
+    \node[layer] (ing)  at (0,-2.10)  {\textbf{Ingestion} --- dataset loaders, chunking, risk tagger};
+    \node[layer] (mod)  at (0,-3.15)  {\textbf{Models \& retrieval} --- \texttt{llama.cpp} backend $\mid$ BM25, dense, hybrid (RRF)};
+    \node[novel] (gate) at (0,-4.20)  {\textbf{Policies \& gating} --- P1--P5 $\mid$ entropy, margin, probe $\rightarrow$ majority vote};
+    \node[layer] (eval) at (0,-5.25)  {\textbf{Evaluation} --- scorers, profiler, append-only JSONL audit log};
+
+    \draw[arrow] (cfg)  -- (data);
+    \draw[arrow] (data) -- (ing);
+    \draw[arrow] (ing)  -- (mod);
+    \draw[arrow] (mod)  -- (gate);
+    \draw[arrow] (gate) -- (eval);
+
+    \draw[arrow, dashed] (eval.east) -- (5.9,-5.25) -- (5.9,-4.20) -- (gate.east);
+  \end{tikzpicture}
+  \caption{The six-layer architecture. Each layer depends only on those
+    above it and communicates through the shared typed dataclasses, so every
+    component is unit-testable against mock collaborators. The gating layer
+    (highlighted) is the novel contribution. Because the evaluation layer
+    logs each query's full gate payload, the analyses of
+    Chapter~\ref{ch:eval} --- threshold calibration, gate ablations and the
+    paired distraction study --- replay from those logs without re-invoking
+    the model (dashed path).}
+  \label{fig:architecture}
+\end{figure}
 
 \section{The Policy Space}
 \label{sec:method-policies}
@@ -49,8 +76,10 @@ fair comparative experiment. Five policies span the design space
     with the evidence in context. It is the cost ceiling and the conventional
     RAG baseline.
   \item \textbf{P2 (always-retrieve with citations)} additionally asks the
-    model to name its sources; cited titles are matched leniently back to
-    retrieved chunks, and invented citations are dropped rather than counted.
+    model to name its sources; following the attribution-evaluation
+    convention of \citet{alce2023}, cited titles are matched leniently back
+    to retrieved chunks and invented citations are dropped rather than
+    counted.
   \item \textbf{P3 (closed-book)} never retrieves: the parametric-knowledge
     reference point and the cost floor.
   \item \textbf{P4 (hybrid)} is P1 bound to the hybrid (rank-fusion)
@@ -107,15 +136,41 @@ value and is exposed in configuration.
 \subsection{Why Three Signals}
 \label{sec:method-why-three}
 
-A single uncertainty signal is fragile. Token entropy is inflated by benign
-lexical variation on questions the model actually knows; the logit margin is
-large on a confidently \emph{wrong} answer; self-reported confidence is
-poorly calibrated in small models (Section~\ref{sec:bg-calibration}). Each
-signal has a characteristic failure mode under which it would gate
-incorrectly. The design response is an ensemble of three signals derived from
-\emph{different} aspects of the model's behaviour --- distributional spread,
-decision-boundary decisiveness, and cross-framing stability --- combined by
-majority vote so that no single failure mode dominates.
+A single uncertainty signal is fragile, because each of the signal families
+surveyed in Section~\ref{sec:bg-calibration} carries a characteristic
+failure mode under which it would gate incorrectly.
+
+\emph{Token entropy} is inflated by benign lexical freedom: probability
+mass spreads wherever multiple phrasings are equally acceptable ---
+formatting tokens, function words, punctuation --- regardless of whether
+the underlying \emph{fact} is certain. A model that knows the answer but
+has many ways to phrase it looks uncertain to an entropy gate. This is not
+hypothetical: the token-level attribution analysis of
+Section~\ref{sec:eval-attribution} demonstrates exactly this failure on
+real clinical text, with entropy concentrating on filler tokens while the
+clinically decisive tokens are generated at near-certainty.
+
+\emph{Logit margin} fails in the opposite direction: its failure mode is
+confident error. A model that has internalised a wrong fact produces a
+large margin on a wrong answer, and the gate reads certainty. Margin
+measures decisiveness, not correctness.
+
+\emph{Verbalized confidence} --- asking the model to rate its own answer
+--- is the standard third option, but \citet{kadavath2022} show
+self-assessment calibration degrades with model size, and self-reports from
+a 3B model are close to uninformative. This project therefore
+\emph{replaces} verbalized confidence with a stability test in the spirit
+of self-consistency \citep{wang2023selfconsistency}: generate two drafts
+under different prompt framings and measure their agreement. Genuinely held
+knowledge is invariant to surface framing; a guess is not. Reduced from
+many-sample majority voting to a two-draft agreement test, the idea becomes
+cheap enough to run per query on CPU.
+
+The design response to these three failure modes is an ensemble of three
+signals derived from \emph{different} aspects of the model's behaviour ---
+distributional spread, decision-boundary decisiveness, and cross-framing
+stability --- combined by majority vote so that no single failure mode
+dominates.
 
 The framing is safety-asymmetric by intent: an unnecessary retrieval costs
 seconds of latency; a confidently wrong closed-book answer in a clinical
