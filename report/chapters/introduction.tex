@@ -18,8 +18,8 @@ motivate this dissertation.
 
 The first is \emph{safety}. A hallucinated drug interaction is not merely a
 wrong answer; in a deployed clinical tool it is a potential clinical incident.
-Closed-book generation --- answering purely from the model's parametric
-knowledge --- is therefore never a neutral choice in this domain: it trades
+Closed-book generation, meaning answering purely from the model's parametric
+knowledge, is therefore never a neutral choice in this domain: it trades
 latency for an unbounded and invisible hallucination risk, with no provenance
 trail a clinician could audit. Any system intended even for clinical
 \emph{education} must take a position on when parametric knowledge alone is
@@ -31,24 +31,24 @@ that stand to gain most from an always-available clinical question-answering
 assistant are precisely the ones the cloud-first architecture of modern LLM
 services excludes. The ITU estimates that 2.2 billion people remain offline
 as of 2025; in low-income countries only 23\% of the population uses the
-Internet at all, and among rural residents the figure falls to 14\% ---
+Internet at all, and among rural residents the figure falls to 14\%, which is
 little more than a third of the urban share
 \citep{itu2025factsfigures}. Connectivity is not even the first missing
 layer: more than 666 million people live without electricity, 85\% of them
 in sub-Saharan Africa \citep{sdg7tracking2025}, and where networks do reach,
 access remains unaffordable in roughly 60\% of low- and middle-income
-countries \citep{itu2025factsfigures}. In such regions --- rural clinics,
-hospital training wards, and entire districts where connectivity and power
-are intermittent or absent --- there is no cloud model to call, no GPU to
+countries \citep{itu2025factsfigures}. In such regions, among them rural
+clinics, hospital training wards, and entire districts where connectivity and
+power are intermittent or absent, there is no cloud model to call, no GPU to
 accelerate inference, and no realistic prospect of either arriving soon;
 recent work on clinical decision support for these settings reaches the
 same offline-first conclusion \citep{walusimbi2026aletheia}. The same
 architecture is also what air-gapped, data-governed environments require,
 where policy rather than infrastructure forbids sending clinical text to a
 third-party API. The systems evaluated in this dissertation take the
-constraint literally: the reference configuration --- a 4-bit quantised
-model, exact CPU-side vector search, and a 426K-chunk corpus with its
-indexes --- runs end-to-end on a single commodity laptop with no GPU and no
+constraint literally: the reference configuration, comprising a 4-bit
+quantised model, exact CPU-side vector search, and a 426K-chunk corpus with
+its indexes, runs end-to-end on a single commodity laptop with no GPU and no
 network connection. Every design decision that follows, from quantisation
 to the training-free gate, is downstream of taking this deployment reality
 seriously rather than treating it as an afterthought.
@@ -62,7 +62,7 @@ day, always-retrieve is a substantial and often unnecessary expenditure of
 time and energy.
 
 These three pressures converge on a single question that is usually skipped:
-\emph{retrieval is neither free nor always helpful --- so when should a
+\emph{retrieval is neither free nor always helpful, so when should a
 clinical question-answering system actually retrieve?}
 
 \section{Problem Statement}
@@ -70,8 +70,8 @@ clinical question-answering system actually retrieve?}
 
 The two degenerate retrieval policies bracket the problem, and both fail.
 
-\emph{Always-retrieve} maximises cost, and --- as this dissertation
-demonstrates empirically --- it can also \emph{reduce} accuracy. On
+\emph{Always-retrieve} maximises cost, and, as this dissertation
+demonstrates empirically, it can also \emph{reduce} accuracy. On
 multiple-choice medical questions, injecting retrieved context broke 46
 previously-correct answers and fixed only 13 (Chapter~\ref{ch:eval}):
 retrieval actively distracts a model that already knew the answer. The
@@ -90,8 +90,8 @@ deployment setting carries two hard constraints. It must be
 for medicine and fine-tuning the generator (as reflection-token approaches
 require) is infeasible offline on CPU. And it must require \emph{no second
 model}, because the compute budget is a single quantised 3B model on a
-laptop. The remaining option --- the one this dissertation develops and
-evaluates --- is to gate retrieval on signals the model already emits during
+laptop. The remaining option, and the one this dissertation develops and
+evaluates, is to gate retrieval on signals the model already emits during
 generation: the entropy of its token distributions, the margin between its top
 candidates, and the stability of its answer under reframing.
 
@@ -113,7 +113,7 @@ actually answer:
   \item[RQ3] Does an ensemble of three signals outperform its individual
     members, and if so, why?
   \item[RQ4] How far is the best achievable policy from clinically acceptable
-    accuracy at each level of question risk --- the \emph{safety envelope}?
+    accuracy at each level of question risk, the \emph{safety envelope}?
   \item[RQ5] Which of the findings are properties of one model and which are
     properties of the \emph{method}: do calibration non-transfer, the
     selective-retrieval advantage and the retrieval-distraction effect
@@ -131,9 +131,9 @@ This dissertation makes seven contributions, each anchored to specific
 evidence:
 
 \begin{enumerate}
-  \item \textbf{A training-free retrieval-gating ensemble.} Three signals ---
-    mean token entropy, mean top-two logit margin, and a two-draft
-    hallucination probe --- combined by majority vote, requiring no
+  \item \textbf{A training-free retrieval-gating ensemble.} Three signals,
+    namely mean token entropy, mean top-two logit margin, and a two-draft
+    hallucination probe, combined by majority vote, requiring no
     fine-tuning, no labelled gate data, and no auxiliary model
     (Chapter~\ref{ch:method}).
   \item \textbf{Calibration non-transfer.} Literature-default thresholds
@@ -191,7 +191,7 @@ single-model evaluation: the main policy comparison, the calibration study,
 the distraction and protective-skip analyses, the gate ablation, token-level
 entropy attribution, and the safety envelope. Chapter~\ref{ch:scaling}
 replicates the pipeline at 7B and 14B and reads the three models as a
-scaling curve --- what rises, what plateaus, what inverts, and what it means
+scaling curve: what rises, what plateaus, what inverts, and what it means
 that the medium-risk bar stays out of reach. Chapter~\ref{ch:discussion}
 synthesises the findings and confronts their limitations.
 Chapter~\ref{ch:lsep} addresses the legal, social, ethical and professional

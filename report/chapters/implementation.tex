@@ -23,7 +23,7 @@ instead expressed as YAML files \emph{deep-merged} in increasing precedence,
 \]
 so a later file overrides only the keys it names. The merged dictionary is
 validated into a typed \texttt{ProjectConfig} (Pydantic) \emph{before} any
-expensive computation --- a property that matters when a single run occupies
+expensive computation, a property that matters when a single run occupies
 hours of CPU time.
 
 The \texttt{logits\_all} flag is the worked example of a design decision
@@ -33,7 +33,7 @@ constructed with \texttt{logits\_all=true}, at a memory cost of roughly
 256\,MB. The low hardware tier (4\,GB) overrides the flag to \texttt{false},
 which automatically renders those gates unavailable and forces the ensemble
 into its probe-only degraded mode (Section~\ref{sec:method-ensemble}). The
-hardware trade-off is thereby auditable from configuration alone --- no
+hardware trade-off is thereby auditable from configuration alone, with no
 runtime conditional to discover in code.
 
 All inter-layer communication passes through three dataclasses isolated in a
@@ -48,13 +48,14 @@ serialised as one self-describing JSON Lines record per query.
 
 The append-only JSONL audit log is central to both resumability and analysis.
 Because each line is independent, an interrupted run resumes by reading back
-the \texttt{question\_id}s already present and skipping them --- essential
+the \texttt{question\_id}s already present and skipping them, which is essential
 when full experiments run for hours on a laptop that may sleep or be
 interrupted. A free-form \texttt{qvault} dictionary inside each record
 carries gate-specific payloads (per-token entropy arrays, both probe drafts,
 per-member votes, retrieved chunk texts) without schema changes, which is
-what later allowed every analysis in Chapter~\ref{ch:eval} --- calibration
-sweeps, ablations, paired studies --- to run offline from logs alone.
+what later allowed every analysis in Chapter~\ref{ch:eval}, including
+calibration sweeps, ablations and paired studies, to run offline from logs
+alone.
 
 The clinical-risk tagger assigns each question a level in
 $\{\text{low}, \text{medium}, \text{high}\}$ using a transparent,
@@ -82,12 +83,12 @@ logged questions reproduced the logged answers exactly
 
 Two backend methods exist solely to serve the gates. \texttt{draft()} returns
 generated text \emph{and} the raw logit array of shape
-$[n_{\text{gen}} \times |V|]$ --- the entropy gate's input.
+$[n_{\text{gen}} \times |V|]$, which is the entropy gate's input.
 \texttt{get\_top2\_logprobs()} returns per-position top-two
 log-probabilities via the completion API rather than the logit buffer, so it
 survives \texttt{logits\_all=false}. Both are declared on the abstract
 backend interface, which lets a \texttt{MockLLMBackend} supply deterministic
-text and synthetic logit arrays --- the foundation of the model-free test
+text and synthetic logit arrays, forming the foundation of the model-free test
 suite.
 
 Prompt construction separates message \emph{bodies} from the chat-template
@@ -110,9 +111,9 @@ gating each long run.
 
 The evaluation initially used a 200-chunk pilot corpus, which produced the
 corpus-bottleneck finding of Section~\ref{sec:eval-corpus} and forced a real
-corpus build. Verifying dataset paths \emph{before} committing to them --- a
+corpus build. Verifying dataset paths \emph{before} committing to them, a
 habit acquired when the originally planned open-ended dataset proved
-unreachable at its published location --- revealed that the StatPearls
+unreachable at its published location, revealed that the StatPearls
 sub-corpus was empty on the hosting hub, while the MedRAG textbooks
 ($\sim$126K snippets) and PubMed corpora resolved correctly. The corpus was
 therefore assembled from the medical textbooks plus a 300,000-snippet PubMed
@@ -139,19 +140,19 @@ lazily so the test suite never pays for it, and reported in kWh with its
 status as a software estimate stated plainly
 (Section~\ref{sec:disc-limitations}). Measurement is strictly
 \emph{sequential}: concurrent queries would corrupt process-level energy
-readings, so no parallelism is permitted in the run loop --- a constraint
+readings, so no parallelism is permitted in the run loop, a constraint
 imposed by the metric, not a limitation of the code.
 
 Two scorers match the two question types. The multiple-choice scorer extracts
 the predicted option letter through a cascade of patterns (leading letters,
 ``the answer is X'' phrasings, bare capitals); a scoring fix during analysis
 made an explicit ``the answer is X'' statement take precedence over a
-letter echoed from the choices --- re-scoring shifted results by only
+letter echoed from the choices, and re-scoring shifted results by only
 0.5pp, confirming that the observed accuracy is a property of the answers,
 not of the extractor. The open-ended scorer computes SQuAD-style token-level
 $F_1$ against the gold paragraph. The $F_1$ routine lives in the scoring
 module rather than the metrics module because the hallucination probe reuses
-it to measure inter-draft agreement --- a small early example of the design
+it to measure inter-draft agreement, a small early example of the design
 anticipating the gate layer's needs. Binary correctness is deliberately not
 reported for open-ended questions: thresholding $F_1$ at zero yields
 $\sim$98\% ``accuracy'' and measures nothing; mean $F_1$ is the reported
@@ -178,15 +179,15 @@ re-scores raw logs in memory (raw logs are never mutated) and a generator
 script emits both the results tables and a \texttt{numbers.tex} macro file;
 every chapter cites macros such as \verb|\accPfiveMcq|, never literals. A
 regression test fails the build if a reported number drifts from what the
-logs produce --- and the guard itself was verified to fail on a deliberately
+logs produce, and the guard itself was verified to fail on a deliberately
 planted literal (a test of the test). The handful of deliberately frozen
 historical literals (pilot-corpus figures kept for contrast) are annotated as
 such in the source.
 
 \paragraph{Paired-run proofs.} The closed-book policy P3 never retrieves, so
 its result is corpus-independent; a regression test proves the reference run
-is a genuine paired run --- identical question IDs, identical order, zero
-retrievals --- which licenses reusing it across corpus conditions and saved a
+is a genuine paired run, with identical question IDs, identical order and zero
+retrievals, which licenses reusing it across corpus conditions and saved a
 3.2-hour re-run. Determinism was verified by replay: re-answering logged
 questions at temperature 0 reproduced the logged answers exactly.
 

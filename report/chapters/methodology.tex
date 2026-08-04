@@ -17,7 +17,7 @@ layer depends only on the layers beneath it and communicates exclusively
 through shared, typed dataclasses} (Figure~\ref{fig:architecture}). The
 practical consequence is that every
 component can be unit-tested in isolation against mock collaborators, and the
-retrieval gates --- the core novel contribution --- were developed against a
+retrieval gates, which are the core novel contribution, were developed against a
 stable, test-covered substrate rather than a moving target. The same
 discipline is what later makes the evaluation trustworthy: because every
 policy emits an identical, fully populated record per query, analyses such as
@@ -33,12 +33,12 @@ can be run entirely from logs, without re-invoking the model.
     novel/.style={layer, fill=blue!8, very thick},
     arrow/.style={-{Latex[length=2mm]}, thick, black!55},
   ]
-    \node[layer] (cfg)  at (0, 0)     {\textbf{Configuration} --- layered YAML $\rightarrow$ validated \texttt{ProjectConfig}};
-    \node[layer] (data) at (0,-1.05)  {\textbf{Data contracts} --- \texttt{UnifiedQuestion}, \texttt{PolicyResult}, \texttt{RunRecord}};
-    \node[layer] (ing)  at (0,-2.10)  {\textbf{Ingestion} --- dataset loaders, chunking, risk tagger};
-    \node[layer] (mod)  at (0,-3.15)  {\textbf{Models \& retrieval} --- \texttt{llama.cpp} backend $\mid$ BM25, dense, hybrid (RRF)};
-    \node[novel] (gate) at (0,-4.20)  {\textbf{Policies \& gating} --- P1--P5 $\mid$ entropy, margin, probe $\rightarrow$ majority vote};
-    \node[layer] (eval) at (0,-5.25)  {\textbf{Evaluation} --- scorers, profiler, append-only JSONL audit log};
+    \node[layer] (cfg)  at (0, 0)     {\textbf{Configuration} - layered YAML $\rightarrow$ validated \texttt{ProjectConfig}};
+    \node[layer] (data) at (0,-1.05)  {\textbf{Data contracts} - \texttt{UnifiedQuestion}, \texttt{PolicyResult}, \texttt{RunRecord}};
+    \node[layer] (ing)  at (0,-2.10)  {\textbf{Ingestion} - dataset loaders, chunking, risk tagger};
+    \node[layer] (mod)  at (0,-3.15)  {\textbf{Models \& retrieval} - \texttt{llama.cpp} backend $\mid$ BM25, dense, hybrid (RRF)};
+    \node[novel] (gate) at (0,-4.20)  {\textbf{Policies \& gating} - P1--P5 $\mid$ entropy, margin, probe $\rightarrow$ majority vote};
+    \node[layer] (eval) at (0,-5.25)  {\textbf{Evaluation} - scorers, profiler, append-only JSONL audit log};
 
     \draw[arrow] (cfg)  -- (data);
     \draw[arrow] (data) -- (ing);
@@ -53,8 +53,8 @@ can be run entirely from logs, without re-invoking the model.
     component is unit-testable against mock collaborators. The gating layer
     (highlighted) is the novel contribution. Because the evaluation layer
     logs each query's full gate payload, the analyses of
-    Chapter~\ref{ch:eval} --- threshold calibration, gate ablations and the
-    paired distraction study --- replay from those logs without re-invoking
+    Chapter~\ref{ch:eval}, namely threshold calibration, gate ablations and
+    the paired distraction study, replay from those logs without re-invoking
     the model (dashed path).}
   \label{fig:architecture}
 \end{figure}
@@ -65,7 +65,7 @@ can be run entirely from logs, without re-invoking the model.
 A \emph{policy} is a complete answering strategy: given a question, it decides
 what (if anything) to retrieve and produces an answer. All policies implement
 a single method, \texttt{answer(question) $\rightarrow$ PolicyResult}, so the
-run driver is agnostic to which policy it holds --- the precondition for a
+run driver is agnostic to which policy it holds, which is the precondition for a
 fair comparative experiment. Five policies span the design space
 (Table~\ref{tab:setup}):
 
@@ -84,15 +84,15 @@ fair comparative experiment. Five policies span the design space
     reference point and the cost floor.
   \item \textbf{P4 (hybrid)} is P1 bound to the hybrid (rank-fusion)
     retriever rather than BM25 alone.
-  \item \textbf{P5 (gated)} --- the proposed method --- consults the gate
+  \item \textbf{P5 (gated)}, the proposed method, consults the gate
     ensemble per query and behaves like P1 on \textsc{retrieve} and like P3 on
     \textsc{skip}.
 \end{itemize}
 
 Two policies from the original project plan were deliberately scoped out: a
 user-facing retrieval toggle (P6) and a multi-agent variant (P7). Both add
-breadth without informing the central question --- when a system
-\emph{should} retrieve --- and the evaluation depth spent instead on paired
+breadth without informing the central question of when a system
+\emph{should} retrieve, and the evaluation depth spent instead on paired
 analyses and ablations (Chapter~\ref{ch:eval}) proved the better trade.
 
 \section{Retrieval}
@@ -103,7 +103,7 @@ configuration rather than code change.
 
 \paragraph{Lexical (BM25).} BM25 \citep{robertson2009bm25} scores documents
 by weighted lexical overlap. It requires no embedding model, no vector index
-and no GPU --- the only retriever viable on the lowest hardware tier --- and
+and no GPU, making it the only retriever viable on the lowest hardware tier, and
 medical terminology is specific enough that exact lexical match is a strong
 signal (drug names, dosages, anatomical terms).
 
@@ -111,7 +111,7 @@ signal (drug names, dosages, anatomical terms).
 \texttt{all-MiniLM-L6-v2} \citep{reimers2019} (384 dimensions) and indexed
 in a FAISS \texttt{IndexFlatIP} \citep{johnson2019faiss}. Embeddings are
 L2-normalised, so inner product equals cosine similarity; the index is exact
-(brute-force), so retrieval is deterministic and needs no training --- a
+(brute-force), so retrieval is deterministic and needs no training, which is a
 reproducibility choice made deliberately, accepting linear-scan cost in
 exchange for run-to-run identical rankings. Dense retrieval catches the
 paraphrase cases BM25 misses: a query about a \emph{heart attack} matching a
@@ -141,8 +141,8 @@ surveyed in Section~\ref{sec:bg-calibration} carries a characteristic
 failure mode under which it would gate incorrectly.
 
 \emph{Token entropy} is inflated by benign lexical freedom: probability
-mass spreads wherever multiple phrasings are equally acceptable ---
-formatting tokens, function words, punctuation --- regardless of whether
+mass spreads wherever multiple phrasings are equally acceptable, such as
+formatting tokens, function words and punctuation, regardless of whether
 the underlying \emph{fact} is certain. A model that knows the answer but
 has many ways to phrase it looks uncertain to an entropy gate. This is not
 hypothetical: the token-level attribution analysis of
@@ -155,8 +155,8 @@ confident error. A model that has internalised a wrong fact produces a
 large margin on a wrong answer, and the gate reads certainty. Margin
 measures decisiveness, not correctness.
 
-\emph{Verbalized confidence} --- asking the model to rate its own answer
---- is the standard third option, but \citet{kadavath2022} show
+\emph{Verbalized confidence}, meaning asking the model to rate its own
+answer, is the standard third option, but \citet{kadavath2022} show
 self-assessment calibration degrades with model size, and self-reports from
 a 3B model are close to uninformative. This project therefore
 \emph{replaces} verbalized confidence with a stability test in the spirit
@@ -167,18 +167,18 @@ many-sample majority voting to a two-draft agreement test, the idea becomes
 cheap enough to run per query on CPU.
 
 The design response to these three failure modes is an ensemble of three
-signals derived from \emph{different} aspects of the model's behaviour ---
+signals derived from \emph{different} aspects of the model's behaviour, namely
 distributional spread, decision-boundary decisiveness, and cross-framing
-stability --- combined by majority vote so that no single failure mode
+stability, combined by majority vote so that no single failure mode
 dominates.
 
 The framing is safety-asymmetric by intent: an unnecessary retrieval costs
 seconds of latency; a confidently wrong closed-book answer in a clinical
 setting costs far more. The ensemble is therefore deliberately biased toward
 retrieving when the signals disagree. The evaluation partially
-\emph{complicates} this design story --- the ablation in
+\emph{complicates} this design story, since the ablation in
 Section~\ref{sec:eval-ablation} finds that the probe over-triggers retrieval
-and the flat majority vote is what protects the ensemble from it --- and that
+and the flat majority vote is what protects the ensemble from it, and that
 result is reported there rather than smoothed over here: the design was
 reasoned in advance, then tested, and the test taught something the
 reasoning had not.
@@ -196,7 +196,7 @@ over vocabulary $V$, the per-token Shannon entropy (nats) and gate signal are
   \label{eq:entropy}
 \end{align}
 and the gate votes \textsc{retrieve} when $\bar{H} > \tau_H$. High mean
-entropy indicates probability mass spread over many continuations --- direct
+entropy indicates probability mass spread over many continuations, that is, direct
 lexical-level uncertainty.
 
 Beyond the scalar decision signal, the gate returns the full per-token array
@@ -219,7 +219,7 @@ $p_t^{(1)} \ge p_t^{(2)}$,
   \label{eq:margin}
 \end{align}
 and the gate votes \textsc{retrieve} when $\bar{M} < \tau_M$. A small margin
-means the model is torn between near-equiprobable continuations ---
+means the model is torn between near-equiprobable continuations, making it
 complementary to entropy, which summarises the whole distribution while the
 margin isolates the decision boundary. Practically, the margin gate reads the
 completion API's top-$k$ log-probabilities rather than the raw logit buffer:
@@ -231,8 +231,8 @@ mock is faithful to production output.
 \label{sec:method-gate-probe}
 
 The probe replaces the verbalized-confidence gate of the original design.
-Rather than asking a small model to introspect --- a task at which it is
-unreliable --- it tests whether the model's answer is \emph{stable under
+Rather than asking a small model to introspect, a task at which it is
+unreliable, it tests whether the model's answer is \emph{stable under
 reframing}. Two drafts are generated from the same question under two prompt
 framings:
 \begin{align*}
@@ -246,7 +246,7 @@ open-ended questions it computes token-level $F_1$ between the drafts and
 votes \textsc{retrieve} when $F_1 < 0.7$. The intuition: genuinely held
 knowledge is invariant to surface framing; a guess is sensitive to it.
 
-The probe is purely text-based --- it never touches the logit buffer --- and
+The probe is purely text-based, since it never touches the logit buffer, and
 is therefore the only gate available on the lowest hardware tier. Its cost is
 two extra draft generations per query, which turns out to be the dominant
 term in the gated policy's latency (Section~\ref{sec:eval-cost}); that cost
@@ -276,7 +276,7 @@ log. The fallback is enforced at \emph{construction} time: the policy factory
 inspects the model's \texttt{logits\_all} setting and downgrades any
 requested gate to probe-only when the logit buffer is disabled. The gate a
 policy actually runs is therefore constrained by hardware, not merely by
-configuration --- an auditable property.
+configuration, which is an auditable property.
 
 An honest scope statement belongs here: the degradation \emph{mechanism} is
 implemented and unit-tested, but only the medium hardware tier was physically
@@ -296,7 +296,7 @@ cheapest policy whose accuracy clears the bar?} A policy inside the envelope
 is, by this operationalisation, cheap enough and safe enough to consider for
 that stratum.
 
-The bars are stipulated, not derived from clinical practice --- there is no
+The bars are stipulated, not derived from clinical practice, because there is no
 consensus mapping from benchmark accuracy to clinical safety, and this
 dissertation does not pretend to one. The contribution is the \emph{method}
 of asking the question at all, plus the honest answer it returns at this

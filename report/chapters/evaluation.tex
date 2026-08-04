@@ -17,7 +17,7 @@
 
 All experiments run Llama-3.2-3B-Instruct, 4-bit quantised (Q4\_K\_M),
 served by \texttt{llama.cpp} on CPU only (medium hardware tier), with greedy
-decoding and fixed seed --- every run is deterministic and was verified to
+decoding and fixed seed, so every run is deterministic and was verified to
 replay exactly (Section~\ref{sec:eval-ablation}). Two question sets of
 $n=\nQuestions{}$ each are used: MIRAGE MMLU-Med multiple-choice questions,
 scored by exact letter match, and PubMedQA (\texttt{pqa\_labeled}) open-ended
@@ -53,7 +53,7 @@ reported and taken seriously.
 Three claims follow from Table~\ref{tab:main-results}, in decreasing order of
 certainty.
 
-\paragraph{1. Selective retrieval beats always-retrieve --- cost exactly,
+\paragraph{1. Selective retrieval beats always-retrieve: cost exactly,
 accuracy suggestively.} Among the retrieving policies, gated P5 reaches
 \accPfiveMcq{} against \accPoneMcq{} for both P1 (always-retrieve) and P4
 (hybrid), while retrieving on only \retPfiveMcq{} of queries. The two halves
@@ -61,7 +61,7 @@ of this claim carry different evidential weight and are stated separately.
 The retrieval-cost halving is a \emph{count}, not an estimate: P5 answered
 half the queries without touching the corpus at all. The accuracy gain of
 \diffPfivePone{}pp, however, carries a 95\% confidence interval of
-\diffPfivePoneCI{} at $n=\nQuestions{}$ --- an interval that includes zero.
+\diffPfivePoneCI{} at $n=\nQuestions{}$, an interval that includes zero.
 The gain is therefore \emph{consistent with} a genuine improvement rather
 than proof of one; this evaluation is not powered to establish it. Stating
 that plainly costs the headline little and buys the analysis its
@@ -78,7 +78,7 @@ here, and the answer is more interesting than ``the model is weak.''
 ($F_1 = \fOnePfiveOpen{}$) edges above closed-book P3 (\fOnePthreeOpen{}), with
 P1 at \fOnePoneOpen{}. Where the model \emph{lacks} the specific study
 findings, retrieval genuinely adds information. The MCQ/open-ended split is
-not an inconsistency to be explained away --- it is the finding: retrieval
+not an inconsistency to be explained away, it is the finding: retrieval
 helps precisely when the model does not already know, which is exactly the
 condition a gate exists to detect.
 
@@ -100,8 +100,8 @@ At the thresholds inherited from the general-domain literature
 \nQuestions{} questions, and P5 collapsed onto closed-book P3 exactly.
 Figure~\ref{fig:signals} shows why: on the 4-bit quantised model, greedy
 draft distributions are sharply peaked, so observed mean entropy spans only
-0.27--1.59 nats % [FROZEN] uncalibrated-run signal range, week2 logs
---- never approaching the 2.5-nat trigger --- and the top-two margin spans
+0.27--1.59 nats, % [FROZEN] uncalibrated-run signal range, week2 logs
+never approaching the 2.5-nat trigger, and the top-two margin spans
 0.45--0.89, never falling below the 0.3 trigger. Neither threshold is
 \emph{physically reachable}. Only the threshold-free hallucination probe
 ever voted to retrieve (80 of 200 questions), and under a 2-of-3 majority a
@@ -114,7 +114,7 @@ distributions, relocating the entire signal range.
 
 Recalibration is cheap because it is \emph{offline}. Every run logs the raw
 per-gate signal per query, so the retrieve/skip decision can be replayed at
-any threshold without invoking the model --- a sweep over a threshold grid
+any threshold without invoking the model, so a sweep over a threshold grid
 takes seconds rather than the hours a live re-run would cost. A single
 global operating point $\tau_H = \tau_M = 0.70$ places retrieval at
 \retPfiveMcq{} on MCQ and \retPfiveOpen{} on open-ended questions. The
@@ -138,8 +138,8 @@ On the 200-chunk pilot corpus, always-retrieve P1 scored 17\%
 and \emph{calibrated} P5 dropped from \accPthreeMcq{} (when its gate never
 fired) to 45.5\% (once it began retrieving at 50\%).
 % [FROZEN] pilot calibrated-P5 result
-The gate was functioning exactly as designed --- firing at the calibrated
-rate --- yet firing made the policy worse, because the corpus contained
+The gate was functioning exactly as designed, firing at the calibrated
+rate, yet firing made the policy worse, because the corpus contained
 almost nothing worth retrieving. The general principle, and the cleanest
 lesson in this dissertation: \textbf{gated retrieval inherits the quality of
 the corpus it retrieves from.} A gate cannot rescue retrieval from an empty
@@ -165,14 +165,14 @@ by what retrieval \emph{did} to it.
 \paragraph{The effect.} Retrieval \textbf{broke 46} answers the model got
 right closed-book, and \textbf{fixed 13} it got wrong: net $-33/200$
 ($-16.5$pp), a harm-to-help ratio of $3.5{:}1$. The closed-book advantage on
-MCQ is not model weakness --- it is retrieval actively damaging a model that
+MCQ is not model weakness; it is retrieval actively damaging a model that
 already knew.
 
 \paragraph{The symptom.} On the 46 broken questions, P1's answers are roughly
 $15\times$ longer than P3's (274 versus 18 characters on average), and 26\%
 are outright refusals of the form \emph{``the context does not provide
 \ldots''}. Confronted with retrieved text, the model stops answering and
-starts summarising --- or declines to answer a question it had, minutes
+starts summarising, or else declines to answer a question it had, minutes
 earlier, answered correctly from memory.
 
 \paragraph{Suspect A: is the retriever fetching junk?} Measured directly:
@@ -182,7 +182,7 @@ not fetching off-topic material on the questions it breaks.
 
 \paragraph{Suspect B: distraction.} What differs is whether the chunks
 contain the answer. On both-correct questions, 31\% of retrievals include
-the gold answer in a chunk; on broken questions, only 13\% --- the chunks
+the gold answer in a chunk; on broken questions, only 13\%, so the chunks
 are $2.4\times$ less \emph{answer-bearing} while being equally
 \emph{on-topic}. The model receives text that is topically relevant but
 factually non-decisive, cannot distinguish ``related'' from ``decisive'',
@@ -190,15 +190,15 @@ and abandons a fact it already held.
 
 \paragraph{A worked example.} Question \texttt{anatomy-020} asks for the
 location of the sinoatrial node; gold: the upper wall of the right atrium.
-The retrieved chunk correctly discusses the SA node as the heart's pacemaker
---- on-topic by any relevance measure --- but never states its
+The retrieved chunk correctly discusses the SA node as the heart's pacemaker,
+on-topic by any relevance measure, but never states its
 \emph{location}. P1 produces a fluent, on-topic, wrong answer; P3, from
 parametric memory, answers correctly.
 
 \paragraph{The verdict.} Both hypotheses are partly right, and the
 combination is more informative than either alone. Retrieval quality is a
-real ceiling --- only 31\% gold-in-chunk even on the successes says the
-retriever has headroom --- but the \emph{failure mode} is distraction. The
+real ceiling, since only 31\% gold-in-chunk even on the successes says the
+retriever has headroom, but the \emph{failure mode} is distraction. The
 two remedies, in order of leverage: do not retrieve when the model already
 knows (the gate), and improve what retrieval returns (future work). Which
 raises the decisive question: did the gate actually protect the model on
@@ -222,15 +222,15 @@ On exactly the subset where retrieval is poison, the gate's skip decision is
 perfectly protective. This is the sharpest single result in the
 dissertation, and it reframes what a retrieval gate is \emph{for}. The
 adaptive-retrieval literature motivates gating as cost saving; this result
-shows its value here is \emph{protection} --- the gate is not detecting
+shows its value here is \emph{protection}: the gate is not detecting
 ``easy'' questions, it is detecting questions where the model's parametric
 answer is already right, which is a different and harder property.
 
 Two cautions temper the claim. First, $n=19$ is small: a 95\% Wilson
 interval on 19/19 spans [83.2\%, 100\%], so the honest statement is a
 striking observation on a small subset, not a guarantee.
-Second, the gate still \emph{retrieved} on 27 of the 46 poisoned questions
---- it is protective where it skips, but it does not yet skip everywhere it
+Second, the gate still \emph{retrieved} on 27 of the 46 poisoned questions,
+so it is protective where it skips, but it does not yet skip everywhere it
 should. The gate is a partial shield, and claiming more would overreach.
 
 \section{Gate Ablation: Does the Ensemble Earn Its Keep?}
@@ -242,16 +242,16 @@ should. The gate is a partial shield, and claiming more would overreach.
 An examiner will ask: why three gates? The data answers in two parts.
 
 \paragraph{Signal correlation.} Entropy and margin agree on 82\% of per-query
-decisions --- unsurprising, as both derive from the same draft's logits; they
+decisions, unsurprisingly, as both derive from the same draft's logits; they
 are near-collinear. The probe agrees with either logit signal only
 55--58\% of the time: it measures something genuinely different
-(cross-framing stability rather than distributional shape). Swing analysis
---- how often each member changes the ensemble outcome --- attributes 24\% of
-decisions to entropy, 26\% to margin and 6\% to the probe. The ensemble is
+(cross-framing stability rather than distributional shape). Swing analysis,
+measuring how often each member changes the ensemble outcome, attributes
+24\% of decisions to entropy, 26\% to margin and 6\% to the probe. The ensemble is
 not redundant, but its members are far from independent.
 
-\paragraph{The variant sweep.} Given the collinearity, the natural hypothesis
---- held by the author before running the experiment --- was that
+\paragraph{The variant sweep.} Given the collinearity, the natural hypothesis,
+held by the author before running the experiment, was that
 up-weighting the probe, the one independent signal, would improve the
 ensemble. Replaying alternative voting rules over the logged signals (no new
 model calls; determinism verified by re-answering a sample, 3/3 exact):
@@ -278,8 +278,8 @@ model calls; determinism verified by re-answering a sample, 3/3 exact):
 more influence retrieves \emph{more} and scores \emph{worse}
 (Table~\ref{tab:gate-variants}). The collinearity of entropy and margin is
 real, but the proposed fix was wrong: the probe \emph{over-triggers}
-retrieval, and the flat majority vote --- requiring a logit signal to concur
-before retrieving --- is precisely what protects the ensemble from it. This
+retrieval, and the flat majority vote, by requiring a logit signal to concur
+before retrieving, is precisely what protects the ensemble from it. This
 corroborates the retrieval-is-harmful finding from a third, independent
 angle: on this benchmark, marginal retrievals hurt, so the best voting rule
 is the most conservative one. A stated hypothesis, tested and rejected, with
@@ -305,19 +305,19 @@ localised rather than merely summarised. Figure~\ref{fig:entropy-attribution}
 shows the per-token entropy of a draft answer to a canonical clinical
 question. The mean, $\bar{H} = 0.709$, lands almost exactly on the
 calibrated threshold $\tau = 0.70$, so the gate marginally votes
-\textsc{retrieve} --- a useful demonstration that it discriminates near its
+\textsc{retrieve}, a useful demonstration that it discriminates near its
 operating point rather than saturating.
 
 The per-token view, however, is the real result, and it is unflattering to
-the method: the high-entropy tokens are \emph{filler and phrasing} ---
-newlines, punctuation, ``to'', ``is'' --- while the model is near-certain on
+the method: the high-entropy tokens are \emph{filler and phrasing}, such as
+newlines, punctuation, ``to'' and ``is'', while the model is near-certain on
 the clinically decisive drug-name tokens. Raw token entropy on this model
 largely measures \emph{phrasing freedom}, not clinical-content uncertainty.
 This is a genuine limitation of entropy gating as implemented, reported as
 such: the aggregate signal works well enough to calibrate a useful retrieval
 rate, but its per-token composition is not what the method's intuition
 promises. It also points directly at the highest-value methodological
-successor --- content-token-restricted or attention-weighted entropy
+successor, namely content-token-restricted or attention-weighted entropy
 (Section~\ref{sec:conc-future}).
 
 \section{Risk Stratification and the Safety Envelope}
@@ -342,15 +342,15 @@ Two things must be said about this result, and neither is an apology.
 First, the emptiness is now attributable to \emph{model capability}, not to
 the method or the corpus: retrieval demonstrably works
 (Section~\ref{sec:eval-corpus}), the corpus demonstrably contains answers,
-and the gate demonstrably routes sensibly --- yet the quantised 3B model
+and the gate demonstrably routes sensibly, yet the quantised 3B model
 tops out \gapToLowBar{}pp below the lowest bar. The dissertation's honest
 output on this axis is a \emph{quantified distance to clinical
-acceptability} for a fully offline, CPU-only configuration --- a number that
+acceptability} for a fully offline, CPU-only configuration, a number that
 is useful precisely because nobody should deploy without knowing it. That
 attribution is tested directly by the scaling study
 (Chapter~\ref{ch:scaling}): on the identical benchmark the 7B model clears the
-low-risk bar --- closed-book P3 at \accQwenPthreeMcq{} and gated P5 at
-\accQwenPfiveMcq{}, both above \barLow{} --- so the envelope is empty here
+low-risk bar, with closed-book P3 at \accQwenPthreeMcq{} and gated P5 at
+\accQwenPfiveMcq{}, both above \barLow{}, so the envelope is empty here
 because of scale, not method, and ceases to be empty at low risk once capability
 is sufficient.
 
@@ -376,15 +376,15 @@ still overlap, and the low stratum ($n=28$), where the gap is widest
 An uncomfortable engineering truth is stated here rather than hidden behind
 the retrieval-rate number: \textbf{P5 is slower in wall-clock terms than
 always-retrieve} (\latPfiveMcq{} versus \latPoneMcq{} per query on MCQ). The
-ensemble issues three extra draft generations per query --- one shared
-entropy/margin draft and two probe drafts --- before the final answer, and
+ensemble issues three extra draft generations per query, one shared
+entropy/margin draft and two probe drafts, before the final answer, and
 on CPU these drafts dominate. The gate as implemented halves \emph{retrieval
 calls} (exactly) but does not save \emph{time} on this hardware.
 
 Whether that trade is worth making depends on what dominates the deployment
 cost. On this laptop, generation dominates, so the gate costs time. On a
-deployment where retrieval is the expensive resource --- a large corpus on
-slow storage, a metered search service, a shared index under load --- halving
+deployment where retrieval is the expensive resource, such as a large corpus
+on slow storage, a metered search service or a shared index under load, halving
 retrieval calls is the win the gate delivers. The constructive response is
 also concrete: the entropy and margin signals already derive from the
 \emph{same} draft, so merging their generations (five model calls per query
@@ -399,8 +399,8 @@ Every analysis in this chapter used the 3B reference model, and several of
 its findings are claims about the \emph{method} rather than about that
 model: that thresholds must be calibrated per model, that retrieval
 distracts, that selective retrieval beats always-retrieve. A method claim
-supported by one instance is an anecdote. Which of these findings survive
---- and which turn out to be artefacts of a small model --- is the question
+supported by one instance is an anecdote. Which of these findings survive,
+and which turn out to be artefacts of a small model, is the question
 Chapter~\ref{ch:scaling} answers, by replicating the pipeline unchanged
 (same corpus, same questions, same policy code, same quantisation) at 7B
 and 14B.

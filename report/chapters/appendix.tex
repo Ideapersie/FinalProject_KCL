@@ -9,7 +9,7 @@
 \label{app:commands}
 
 Each experiment is fully specified by the layered configuration files
-(policy, experiment, hardware, and --- for the scaling arm --- model) plus
+(policy, experiment, hardware, and, for the scaling arm, model) plus
 explicit index paths and an output log. Representative commands:
 
 \begin{lstlisting}[language=bash,caption={Main MCQ runs on the real corpus (3B, CPU).}]
@@ -55,7 +55,7 @@ python scripts/run_experiment.py \
 \end{lstlisting}
 
 Both are wrapped by \texttt{scripts/run\_overnight.bat}, which re-launches
-each step until its log holds all 200 records --- safe because runs resume by
+each step until its log holds all 200 records, which is safe because runs resume by
 skipping already-logged \texttt{question\_id}s.
 
 \begin{lstlisting}[language=bash,caption={Corpus build (resumable, shard-checkpointed).}]

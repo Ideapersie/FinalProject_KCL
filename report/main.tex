@@ -80,14 +80,14 @@ on multiple-choice questions the retrieved context broke \breakLlama{}
 previously-correct answers on a quantised 3B model and \breakQwenFourteen{}
 on a 14B model, against \fixLlama{} and \fixQwenFourteen{} fixed. Selective
 retrieval is therefore studied not as a cost optimisation but as
-protection. A training-free three-gate ensemble --- mean token entropy,
-top-two logit margin, and a two-draft hallucination probe --- decides per
+protection. A training-free three-gate ensemble of mean token entropy,
+top-two logit margin and a two-draft hallucination probe decides per
 query whether to retrieve, requiring no fine-tuning, no labelled data and no
 second model, targeting fully offline deployments that run on a single
 laptop without a GPU. The pipeline is evaluated on 200 MIRAGE
 multiple-choice and 200 PubMedQA open-ended questions over a 425,847-chunk
 medical corpus, at three model scales (3B, 7B, 14B) held at identical
-quantisation. Gating beats always-retrieve at every scale ---
+quantisation. Gating beats always-retrieve at every scale, reaching
 \accPfiveMcq{} against \accPoneMcq{} at 3B on half the retrieval calls, and
 \accQwenFourteenPfiveMcq{} against \accQwenFourteenPoneMcq{} at 14B, where
 the advantage is statistically significant (\diffFourteenPfivePone{}pp, 95\%

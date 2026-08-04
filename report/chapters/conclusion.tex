@@ -10,13 +10,13 @@
 
 This dissertation asked when an offline, CPU-only medical question-answering
 system should retrieve, and answered it with a training-free three-gate
-ensemble evaluated end-to-end on three quantised models --- 3B, 7B and 14B
---- over a 426K-chunk medical corpus. The contributions, with their
+ensemble evaluated end-to-end on three quantised models, at 3B, 7B and 14B,
+over a 426K-chunk medical corpus. The contributions, with their
 evidence:
 
 \textbf{A working training-free gate} (C1). Token entropy, logit margin and
 a two-draft hallucination probe, majority-voted, with hardware-aware
-degradation --- no fine-tuning, no labelled data, no second model
+degradation, requiring no fine-tuning, no labelled data and no second model
 (Chapter~\ref{ch:method}).
 
 \textbf{Calibration non-transfer} (C2). Literature thresholds are physically
@@ -26,7 +26,7 @@ points in seconds. Gate thresholds are model-specific and must be treated as
 such (Section~\ref{sec:eval-calibration}).
 
 \textbf{Retrieval as distraction} (C3). Retrieval broke 46 previously
-correct answers and fixed 13 --- harmful $3.5{:}1$ --- with chunks equally
+correct answers and fixed 13, a harmful ratio of $3.5{:}1$, with chunks equally
 on-topic but $2.4\times$ less answer-bearing where it harmed
 (Section~\ref{sec:eval-distraction}).
 
@@ -36,7 +36,7 @@ protection at the boundary of parametric knowledge, not merely cost saving
 (Section~\ref{sec:eval-protective}).
 
 \textbf{The safety envelope} (C5). At 3B no policy clears any stipulated
-clinical bar --- the best, closed-book at \accPthreeMcq{}, is
+clinical bar, since the best, closed-book at \accPthreeMcq{}, is
 \gapToLowBar{}pp short of the lowest; at 7B and 14B the low-risk bar is
 cleared and the medium-risk bar is not. The measured distance to clinical
 acceptability for this deployment class is the honest deliverable
@@ -44,7 +44,7 @@ acceptability for this deployment class is the honest deliverable
 
 \textbf{The scaling study} (C6). Three models on identical corpus,
 questions and code: closed-book accuracy rises \scaleGainSmall{}pp from 3B
-to 7B, then only \scaleGainLarge{}pp to 14B --- a saturating curve that
+to 7B, then only \scaleGainLarge{}pp to 14B, a saturating curve that
 flattens below the medium-risk bar. Calibration non-transfer recurs
 prospectively at every scale; distraction \emph{grows} with capability
 (\breakLlama{} $\rightarrow$ \breakQwenFourteen{} broken answers); the
@@ -64,8 +64,8 @@ improvement while the 14B gain (\diffFourteenPfivePone{}pp, CI
 \diffFourteenPfivePoneCI{}) is established; the medium-risk bar is
 unreached at every scale. If one sentence survives this dissertation, it
 should be this: retrieval, the field's default remedy for hallucination,
-made these models \emph{worse} on questions they already knew --- most of
-all the largest, which had the most correct knowledge to lose --- and the
+made these models \emph{worse} on questions they already knew, most of
+all the largest, which had the most correct knowledge to lose, and the
 gate's contribution is knowing when not to use it.
 
 \section{Future Work}
@@ -81,13 +81,13 @@ Ordered by ratio of value to effort, each specific enough to pick up:
     would test whether the closed-book plateau is genuine saturation; and a
     gate ensemble whose every member is recalibratable (replacing the
     threshold-free probe) would restore matched-budget comparison across
-    models --- the one comparison this study could not make
+    models, the one comparison this study could not make
     (Section~\ref{sec:scaling-budget}).
   \item \textbf{Content-aware entropy.} Section~\ref{sec:eval-attribution}
     showed raw token entropy fires on phrasing, not clinical content.
     Restricting the mean to content tokens, or weighting by attention to the
     question's clinical terms, directly attacks the method's clearest
-    measured weakness --- and can be prototyped offline against the logged
+    measured weakness, and can be prototyped offline against the logged
     per-token arrays before any live run.
   \item \textbf{Retrieval-aware (post-hoc) gating.} The distraction analysis
     showed the harmful case is topically-relevant, non-answer-bearing
@@ -99,13 +99,13 @@ Ordered by ratio of value to effort, each specific enough to pick up:
     derive from the same draft but are currently generated twice; merging
     them cuts five model calls per query to four ($\sim$20\% latency), and a
     probe-free logit-only configuration would remove the two probe drafts
-    that dominate cost --- at a measured accuracy trade-off to be
+    that dominate cost, at a measured accuracy trade-off to be
     quantified. Section~\ref{sec:eval-cost} shows latency, not retrieval
     rate, is the binding cost on CPU.
   \item \textbf{Statistical power.} The full 7,663-question MIRAGE
-    benchmark, multiple seeds, and a purposely balanced high-risk stratum
-    --- the current $n=6$ is the single weakest point of the safety
-    analysis --- would convert suggestive intervals into decidable ones.
+    benchmark, multiple seeds, and a purposely balanced high-risk stratum,
+    given that the current $n=6$ is the single weakest point of the safety
+    analysis, would convert suggestive intervals into decidable ones.
   \item \textbf{Deployment surface.} A human-in-the-loop interface exposing
     the gate decision, its signals and per-token uncertainty to a clinician
     reviewer; and physical benchmarking of the low/high hardware tiers on

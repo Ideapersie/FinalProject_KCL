@@ -9,9 +9,9 @@
 \section{Patient Safety and Clinical Liability}
 \label{sec:lsep-safety}
 
-The asymmetry of harm in clinical question answering --- an unnecessary
+The asymmetry of harm in clinical question answering, where an unnecessary
 retrieval costs seconds; a confidently wrong drug-interaction answer could
-cost a patient --- is not a rhetorical framing in this project but an
+cost a patient, is not a rhetorical framing in this project but an
 \emph{encoded design decision}: the gate ensemble is deliberately biased
 toward retrieving when its signals disagree
 (Section~\ref{sec:method-why-three}), and the risk tagger's precedence rules
@@ -30,7 +30,7 @@ concealing that distance would be the ethical failure.
 
 Liability follows the same logic. If such a system were deployed and gave a
 harmful answer, responsibility would distribute contentiously across the
-model provider, the deployer, and the clinician who acted on the output ---
+model provider, the deployer, and the clinician who acted on the output,
 and regulatory regimes increasingly refuse to let the software disclaim its
 way out. Under the UK MHRA's software-as-a-medical-device guidance and the
 EU AI Act's high-risk classification for clinical decision support, a
@@ -44,7 +44,7 @@ misleads the model, its wrong answers become \emph{longer and more fluent}
 ($15\times$ longer than the terse correct closed-book answers). Fluency and
 confidence are exactly the surface features that induce human over-trust.
 The failure mode this system exhibits is therefore the \emph{most} dangerous
-kind for a clinical reader --- wrong answers that look thorough --- which is
+kind for a clinical reader, namely wrong answers that look thorough, which is
 an independent argument for surfacing machine uncertainty
 (Section~\ref{sec:disc-deployment}) rather than only polished prose.
 
@@ -57,7 +57,7 @@ passage ever leaves the device: there is no API call to log, no third-party
 processor to contract with, and no cross-border transfer to assess. That is
 what makes the design viable precisely where GDPR, NHS data-governance
 frameworks and analogous regimes make cloud LLM use difficult or
-impermissible --- and it is why ``offline'' appears in the problem statement
+impermissible, and it is why ``offline'' appears in the problem statement
 rather than the limitations.
 
 Honesty about what this project did \emph{not} have to handle belongs here.
@@ -78,23 +78,23 @@ artefacts, not redistributed products.
 \label{sec:lsep-bias}
 
 Neither of the gate's two paths is neutral. When the system retrieves, it
-inherits the perspective of its corpus --- Western-published textbooks and
+inherits the perspective of its corpus, namely Western-published textbooks and
 PubMed abstracts, whose epidemiological assumptions, drug availability and
 demographic baselines are baked into every passage. When the gate skips, the
 system inherits the training distribution of the base model instead. A gate
 therefore does not remove bias; it \emph{selects between two bias profiles}
 per query, and no analysis in this study measures the demographic
-consequences of that selection --- an acknowledged gap.
+consequences of that selection, which is an acknowledged gap.
 
 The equity argument that motivates the project also carries its own warning.
 An offline CPU-only system is exactly the configuration that can run where
-GPUs, budgets and connectivity do not exist --- rural practice, LMIC
+GPUs, budgets and connectivity do not exist, such as rural practice, LMIC
 clinics, training hospitals, the settings where only 14\% of rural
 residents are online at all \citep{itu2025factsfigures}. Those settings have the most to gain from
 deployable clinical QA, and the least infrastructure to verify it. But
 Section~\ref{sec:eval-envelope} shows the present system does not meet even
 lenient safety bars, and shipping an unsafe system to under-resourced
-settings --- where clinical backstop capacity is thinnest --- would be worse
+settings, where clinical backstop capacity is thinnest, would be worse
 than shipping nothing. Equity of access must mean access to a \emph{safe}
 system; this work quantifies how far that still is.
 
@@ -102,10 +102,10 @@ system; this work quantifies how far that still is.
 \label{sec:lsep-energy}
 
 Per-query energy was measured throughout with \texttt{codecarbon} and is a
-software estimate, not a metered hardware measurement --- reported as such.
+software estimate, not a metered hardware measurement, and is reported as such.
 The honest accounting cuts against the intuitive green claim: the gate
 halves retrieval calls but \emph{adds} three draft generations per query, so
-on this hardware --- where generation dominates energy --- gating is not
+on this hardware, where generation dominates energy, gating is not
 currently an energy win (Section~\ref{sec:eval-cost}). The energy case for
 gating is real but conditional: it holds where retrieval dominates the cost
 profile (large corpora, remote or disk-bound indexes), not on this laptop.

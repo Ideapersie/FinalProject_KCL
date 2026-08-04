@@ -19,16 +19,16 @@ On questions the model already answers correctly, injecting
 topically-relevant-but-non-decisive context makes it worse at a ratio of
 3.5 broken answers for every one fixed
 (Section~\ref{sec:eval-distraction}). The mechanism is displacement, not
-noise: the model defers to the provided context --- as RAG prompting
-instructs it to --- and abandons parametric knowledge that was correct. The
+noise: the model defers to the provided context, as RAG prompting
+instructs it to, and abandons parametric knowledge that was correct. The
 standard RAG assumption, that context is at worst neutral, is false for this
 model class.
 
 A natural objection is that this ``distraction'' is really \emph{absence}:
 perhaps retrieval hurts simply because the corpus does not contain the
 answer. Three lines of evidence rule that out as the primary cause. If the
-corpus lacked answers, retrieval could never turn a wrong answer right ---
-yet it \emph{fixes} \fixLlama{}, \fixQwenSeven{} and \fixQwenFourteen{}
+corpus lacked answers, retrieval could never turn a wrong answer right, yet
+it \emph{fixes} \fixLlama{}, \fixQwenSeven{} and \fixQwenFourteen{}
 closed-book errors at 3B, 7B and 14B. Retrieval measurably \emph{helps} the
 weakest model on open-ended questions (P1 \fOnePoneOpen{} over P3
 \fOnePthreeOpen{}), which is impossible if the information is not there. And
@@ -40,8 +40,8 @@ because it has the most correct parametric knowledge to be displaced.
 Absence cannot produce that gradient; displacement is its signature.
 
 If retrieval can be poison, then the value of a gate is not primarily
-\emph{efficiency} --- the framing the adaptive-retrieval literature has
-largely adopted --- but \emph{protection}. The sharpest evidence is the
+\emph{efficiency}, the framing the adaptive-retrieval literature has
+largely adopted, but \emph{protection}. The sharpest evidence is the
 protective-skip result (Section~\ref{sec:eval-protective}): on precisely the
 questions where retrieval breaks a correct answer, the gate's skip decision
 scored 19/19, its retrieve decision 3/27. The gate's real job, on this
@@ -57,8 +57,8 @@ One boundary, two sides, one gate whose task is to tell them apart. Even the
 refuted ablation hypothesis (Section~\ref{sec:eval-ablation}) folds into the
 same picture: probe-boosting variants fail because they retrieve more, and
 on a benchmark where marginal retrievals hurt, the most conservative voting
-rule wins. Three independent analyses --- the paired study, the protective
-skip, and the ablation --- converge on the same conclusion from different
+rule wins. Three independent analyses, namely the paired study, the
+protective skip and the ablation, converge on the same conclusion from different
 directions, which is the kind of agreement that survives scrutiny better
 than any single number.
 
@@ -86,9 +86,10 @@ and the open-ended ordering \emph{inverts} between the smallest model
 are still a curve through one Llama model and two Qwen models, not a claim about
 model families in general, and the two larger points come from the same family,
 so a family effect cannot be separated from a scale effect between them. The
-curve is also visibly \emph{saturating} --- the closed-book gain from 7B to 14B
-(\scaleGainLarge{}pp) is a fraction of the 3B-to-7B gain (\scaleGainSmall{}pp)
---- so extrapolating it to the higher safety bars would be unwarranted.
+curve is also visibly \emph{saturating}, since the closed-book gain from 7B to
+14B (\scaleGainLarge{}pp) is a fraction of the 3B-to-7B gain
+(\scaleGainSmall{}pp), so extrapolating it to the higher safety bars would be
+unwarranted.
 
 \paragraph{Corpus completeness and retrieval quality.} The distraction result
 does not exonerate the corpus. The index is \textasciitilde426K chunks drawn
@@ -100,16 +101,17 @@ retrieved for only a minority of questions even when the gated answer is
 correct, so there is genuine retrieval-quality headroom: a fuller corpus or a
 stronger retriever could surface the decisive passage more often and reduce the
 damage on the questions where retrieval currently breaks a correct answer.
-The claim defended here is therefore the narrower one --- that on \emph{this}
+The claim defended here is therefore the narrower one, that on \emph{this}
 corpus and retriever, and for these models, the dominant failure mode is
 displacement of correct parametric knowledge rather than absence of information
-(the three-model evidence above) --- not that retrieval quality is irrelevant.
+(the three-model evidence above), rather than that retrieval quality is
+irrelevant.
 Whether a substantially better retrieval stack would flip any of the MCQ
 orderings is untested and is left to future work.
 
 \paragraph{Retrieval budgets are not matched across models.} Llama's gated
 policy retrieved on \retPfiveMcq{} of queries, Qwen's on
-\retQwenPfiveMcq{} --- a gap of \budgetGapMcq{}pp. Thresholds for Qwen were
+\retQwenPfiveMcq{}, a gap of \budgetGapMcq{}pp. Thresholds for Qwen were
 refitted to reproduce the 3B's \emph{per-gate} budget and the two tunable
 members landed close to target, but the hallucination probe is threshold-free
 on multiple-choice (two drafts agree on a letter or they do not) and so
@@ -127,7 +129,7 @@ by definition, are cleanly comparable between models.
 Thresholds were fitted on multiple-choice drafts and reused unchanged on
 open-ended drafts. That is unsound: a multiple-choice draft is a single
 letter and an open-ended draft is a paragraph, and their signal
-distributions do not coincide. On Qwen the reuse was catastrophic --- the
+distributions do not coincide. On Qwen the reuse was catastrophic: the
 entropy signal's minimum (\qwenOpenEntropyMin{}) lies above its threshold
 (\qwenOpenEntropyTau{}) and the margin signal's maximum
 (\qwenOpenMarginMax{}) lies below its own (\qwenOpenMarginTau{}), so every
@@ -150,7 +152,7 @@ fluent medical prose whether or not it addresses the question, so the metric
 cannot separate a good answer from a well-phrased refusal, and supports
 \emph{relative} comparison between policies only, never absolute quality
 claims. Open-ended conclusions are therefore weakly supported in
-\emph{either} direction --- a measurement limitation rather than a null
+\emph{either} direction, which is a measurement limitation rather than a null
 result, which a sharper metric (entailment against the gold claim, or human
 adjudication) would be required to settle. The problem compounds with a
 corpus--benchmark mismatch: PubMedQA asks about the findings of specific
@@ -179,15 +181,15 @@ otherwise.
 \paragraph{Benchmark narrowness.} MCQ evaluation uses one MIRAGE subset
 (MMLU-Med); open-ended evaluation uses PubMedQA only, after the originally
 planned dataset proved unreachable. MIRAGE is entirely multiple-choice,
-which is precisely why the open-ended complement matters --- but one dataset
+which is precisely why the open-ended complement matters, but one dataset
 per question type limits generality.
 
 \paragraph{Energy measurement.} Energy figures are \texttt{codecarbon}
 software estimates, not metered hardware power measurements.
 
-\paragraph{Risk tagger.} The clinical-risk tagger is a keyword rule set ---
+\paragraph{Risk tagger.} The clinical-risk tagger is a keyword rule set,
 chosen deliberately for auditability, since a learned classifier would
-obscure the basis of a safety-relevant label and no training data exists ---
+obscure the basis of a safety-relevant label and no training data exists,
 but it has recall gaps on implicitly high-risk questions. That gap is partly
 \emph{why} the high-risk stratum is only $n=6$: the tagger finds explicit
 dosing/interaction cues, not subtle criticality.
@@ -205,7 +207,7 @@ rows as \texttt{\_scores[n\_prompt : n\_prompt + max\_tokens]} where
 \texttt{n\_prompt} is \texttt{len(tokenize(prompt))}. That start index is one
 row too high: \texttt{tokenize()} prepends a beginning-of-sequence token the
 completion's context does not contain, so the prompt occupies
-$n_{\text{prompt}} - 1$ rows. The discrepancy was confirmed directly ---
+$n_{\text{prompt}} - 1$ rows. The discrepancy was confirmed directly, since
 under greedy decoding the $\arg\max$ of each logit row must be the token that
 row produced, and for a 48-token draft the slice beginning at
 $n_{\text{prompt}} - 1$ reproduced all 48 generated tokens while the slice
@@ -241,8 +243,8 @@ lowest stipulated bar, and its safety envelope is empty. Scaling improves
 but does not resolve this: the 7B and 14B clear the low-risk bar only, the
 medium-risk bar remains out of reach at every scale tested, and the
 capability curve is flattening as it approaches it
-(Section~\ref{sec:scaling-bars}). This deployment class --- fully offline,
-quantised, commodity-hardware clinical QA --- is not fit for clinical
+(Section~\ref{sec:scaling-bars}). This deployment class, meaning fully
+offline, quantised, commodity-hardware clinical QA, is not fit for clinical
 decision support beyond the lowest-risk stratum, and the honest output of
 the evaluation is the measured distance rather than a product. Publishing
 that distance is the responsible finding.
@@ -253,14 +255,14 @@ self-knowledge is exploitable: cost-aware routing in on-premises deployments
 under data-sovereignty constraints, edge devices where a metered or slow
 retrieval backend dominates cost, and any pipeline where the operator wants
 an auditable, per-query record of \emph{why} the system did or did not
-consult external evidence. The gate's decision payload --- signals, votes,
-thresholds --- is logged per query, which makes the retrieval decision
+consult external evidence. The gate's decision payload of signals, votes and
+thresholds is logged per query, which makes the retrieval decision
 reviewable after the fact in a way end-to-end trained routers are not.
 
 \paragraph{Interpretability as the deployable asset.} The per-token entropy
 attribution (Section~\ref{sec:eval-attribution}) points at what may matter
 more than a small accuracy delta in regulated settings: surfacing
-\emph{where} the model was uncertain. The honest caveat travels with it ---
+\emph{where} the model was uncertain. The honest caveat travels with it:
 on this model, raw entropy highlights phrasing rather than clinical content,
 so attribution is a promising direction with a demonstrated limitation, not
 a finished feature. In a domain where automation bias is a documented harm

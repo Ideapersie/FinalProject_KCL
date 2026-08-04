@@ -18,7 +18,7 @@ since the supporting passage is known; and hallucination is, in principle,
 suppressed, because the model is instructed to ground its answer in the
 provided evidence.
 
-The standard pipeline --- retrieve, augment, generate --- embeds an assumption
+The standard pipeline of retrieve, augment and generate embeds an assumption
 that is rarely stated and almost never tested: that retrieved context is at
 worst \emph{neutral}. If the passages are unhelpful, the model is assumed to
 fall back on what it already knows. Surveys of the field
@@ -42,7 +42,8 @@ requires} exposes the gap this project occupies.
 At the training-heavy end, \textbf{Self-RAG} \citep{selfrag2024} fine-tunes
 the generator itself to emit special reflection tokens that trigger retrieval
 and critique retrieved passages. The method is effective but requires full
-fine-tuning of the generating model on curated reflection data --- infeasible
+fine-tuning of the generating model on curated reflection data, which is
+infeasible
 in an offline, CPU-only deployment, and unavailable for any model one cannot
 retrain. \textbf{Adaptive-RAG} \citep{adaptiverag2024} trains a separate
 query-complexity classifier that routes each question to no-retrieval,
@@ -54,19 +55,19 @@ task reward, requiring a full training loop.
 
 At the training-free end sits \textbf{TARG} \citep{targ2025}, the direct
 methodological ancestor of this work. TARG derives the retrieval decision
-from signals the model already produces during a short draft generation ---
-token-level entropy, top-two margin, and related statistics --- thresholded to
+from signals the model already produces during a short draft generation,
+namely token-level entropy, top-two margin and related statistics, thresholded to
 produce a retrieve/skip decision. No fine-tuning, no labelled data, no second
 model. The empirical justification for gating at all comes from
 \citet{mallen2023}: retrieval helps most on long-tail knowledge and can be
-skipped --- or is even counterproductive --- on popular facts the model
+skipped, or is even counterproductive, on popular facts the model
 already holds, motivating popularity- or confidence-conditioned retrieval.
 
 The gap: to the best of the author's knowledge, training-free logit-signal
 gating has not previously been evaluated (a) on \emph{medical} QA, where the
 cost asymmetry between an unnecessary retrieval and a wrong answer is
-extreme; (b) on a \emph{quantised} small model, whose logit distributions ---
-and therefore whose gate signals --- differ materially from the
+extreme; (b) on a \emph{quantised} small model, whose logit distributions,
+and therefore whose gate signals, differ materially from the
 full-precision models the thresholds were calibrated on; (c) under
 \emph{offline, CPU-only} deployment constraints where both retrieval and
 generation carry real latency and energy cost; or (d) with a
@@ -81,8 +82,8 @@ All four conditions jointly define the setting of this dissertation.
 BioASQ), paired with the MedRAG toolkit and corpora (PubMed abstracts,
 StatPearls, medical textbooks, Wikipedia). Two of its findings shape this
 project's design. First, accuracy scales roughly log-linearly with the number
-of retrieved snippets --- retrieval quantity matters. Second, a
-``lost-in-the-middle'' effect penalises evidence buried mid-context ---
+of retrieved snippets, so retrieval quantity matters. Second, a
+``lost-in-the-middle'' effect penalises evidence buried mid-context, so
 retrieval \emph{placement} matters. Both suggest that retrieval is a resource
 to be spent deliberately rather than uniformly, which is the gating premise.
 
@@ -103,7 +104,7 @@ model already knows (MCQ) and helps where it does not (PubMedQA).
 For scale, \citet{singhal2023medpalm} demonstrate that large models encode
 substantial clinical knowledge, and Med-PaLM~2 reaches 86.5\% on MedQA with
 physician-preferred answers on most clinical axes
-\citep{singhal2025medpalm2} --- but both results come from models of
+\citep{singhal2025medpalm2}, but both results come from models of
 hundreds of billions of parameters behind cloud APIs. They bound what is
 possible for the deployment class studied here from above, and make the
 capability ceilings measured in Chapters~\ref{ch:eval}
@@ -117,20 +118,20 @@ whether retrieval policy narrows or widens that gap.
 
 A retrieval gate needs a per-query estimate of whether the model knows the
 answer, and the literature offers three families of signal to build one
-from. \textbf{Token-distribution statistics} --- the entropy of the
-next-token distribution and the margin between its top candidates --- are
+from. \textbf{Token-distribution statistics}, meaning the entropy of the
+next-token distribution and the margin between its top candidates, are
 the cheapest, since they fall out of a draft generation the model performs
 anyway; they are the signals TARG thresholds \citep{targ2025}.
 \textbf{Verbalized confidence} asks the model to report its own certainty:
 \citet{kadavath2022} show that large models are usefully calibrated at
-self-assessment, but that this ability degrades sharply with model size ---
-a finding that matters here, because it disqualifies the technique for the
+self-assessment, but that this ability degrades sharply with model size,
+a finding that matters here because it disqualifies the technique for the
 3B-parameter deployment class this project targets.
 \textbf{Consistency-based signals} test whether the model's answer is
 stable under resampling or reframing: self-consistency
 \citep{wang2023selfconsistency} demonstrates that agreement across many
-samples tracks correctness. Calibration in the formal sense --- alignment
-between confidence and empirical accuracy --- is measured by expected
+samples tracks correctness. Calibration in the formal sense, meaning
+alignment between confidence and empirical accuracy, is measured by expected
 calibration error \citep{guo2017calibration}. How these three families are
 adapted into this project's gate ensemble, and the characteristic failure
 mode of each that motivates using all three at once, is a design matter and
@@ -144,7 +145,7 @@ quantisation is known to distort exactly the quantities being thresholded.
 model confidence on true labels and increases calibration error, with the
 strongest distortion on samples where the full-precision model was already
 uncertain. Whether thresholds survive the move to a quantised model is
-therefore an open empirical question --- this dissertation answers it in
+therefore an open empirical question, and this dissertation answers it in
 the negative (Section~\ref{sec:eval-calibration}). Second, thresholds are
 typically fitted on one task format and reported as if model-general; the
 scaling study finds they are \emph{task}-specific as well
@@ -162,7 +163,7 @@ decision-support research aimed at these settings has begun to treat
 offline-first operation as a hard requirement rather than a degraded mode:
 \citet{walusimbi2026aletheia} build an on-device diagnostic-support system
 for sub-Saharan African district hospitals on precisely the grounds argued
-in Chapter~\ref{ch:intro} --- that connectivity-dependent tools are
+in Chapter~\ref{ch:intro}, that connectivity-dependent tools are
 structurally unavailable where physician-to-patient ratios are worst. That
 line of work concentrates on diagnosis; the question of when such a system
 should consult an external corpus, this project's subject, is to the
@@ -180,7 +181,7 @@ GGUF-format 4-bit quantised models served by \texttt{llama.cpp}
 \citep{llama3} within the memory and compute budget of a commodity laptop.
 Quantisation, however, is double-edged in this project: it is
 simultaneously the \emph{enabler} of offline deployment and the \emph{cause}
-of the threshold-transfer failure --- the sharply peaked output distributions
+of the threshold-transfer failure, since the sharply peaked output distributions
 of the quantised model are precisely what pushes its entropy and margin
 statistics outside the range that literature thresholds presuppose
 (Section~\ref{sec:eval-calibration}).
@@ -193,6 +194,6 @@ ruled out by the offline, no-fine-tuning, single-model constraints of
 clinical edge deployment. Training-free gating (TARG) exists but has not been
 evaluated on medical QA, on a quantised small model, under CPU-only cost
 constraints, or with a risk-stratified safety analysis. No published work
-known to the author combines all four. That combination --- and the findings
-it surfaces, several of them negative and none of them visible in aggregate
-accuracy alone --- is the space this dissertation occupies.
+known to the author combines all four. That combination, together with the
+findings it surfaces, several of them negative and none of them visible in
+aggregate accuracy alone, is the space this dissertation occupies.
