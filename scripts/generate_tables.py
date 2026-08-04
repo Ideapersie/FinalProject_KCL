@@ -140,7 +140,7 @@ def _present(mapping: dict) -> dict:
 # ── formatting: the single rounding rule ──────────────────────────────
 
 def pct(x: float) -> str:
-    return "---" if x != x else f"{100 * x:.1f}\\%"
+    return "n/a" if x != x else f"{100 * x:.1f}\\%"
 
 
 def f1(x: float) -> str:
@@ -258,9 +258,9 @@ def tab_setup() -> None:
     \\toprule
     Policy & Retrieval & Gate & Role in the evaluation \\\\
     \\midrule
-    P1 always-retrieve & every query & --- & retrieval baseline \\\\
-    P4 hybrid & every query & --- & BM25\\,+\\,dense fusion (RRF) \\\\
-    P3 closed-book$^{\\dagger}$ & never & --- & parametric-knowledge reference \\\\
+    P1 always-retrieve & every query & n/a & retrieval baseline \\\\
+    P4 hybrid & every query & n/a & BM25\\,+\\,dense fusion (RRF) \\\\
+    P3 closed-book$^{\\dagger}$ & never & n/a & parametric-knowledge reference \\\\
     P5 gated & selective & 3-gate ensemble & the proposed method \\\\
     \\bottomrule
   \\end{tabular}
@@ -340,7 +340,7 @@ def tab_scaling_results() -> None:
   P5 row uses thresholds refitted for open-ended drafts (a single global operating
   point per task type); reusing the multiple-choice thresholds instead saturates the
   gate (Table~\\ref{{tab:gate-saturation}}). Retrieval budgets are \\emph{{not}}
-  matched across models --- see Table~\\ref{{tab:budget-match}}.}}
+  matched across models; see Table~\\ref{{tab:budget-match}}.}}
   \\label{{tab:scaling-results}}
 \\end{{table}}
 """
@@ -362,14 +362,14 @@ def tab_gate_saturation() -> None:
                 continue
             label = f"{model} / {kind}" if first else ""
             first = False
-            thr = ", ".join(f"{t:.3f}" for t in sorted(s["thr"])) or "---"
+            thr = ", ".join(f"{t:.3f}" for t in sorted(s["thr"])) or "n/a"
             if s["sig"]:
                 lo, med, hi = (min(s["sig"]),
                                sorted(s["sig"])[len(s["sig"]) // 2],
                                max(s["sig"]))
                 rng = f"{lo:.3f} / {med:.3f} / {hi:.3f}"
             else:
-                rng = "--- (threshold-free)"
+                rng = "n/a (threshold-free)"
             rate = s["fire"] / s["n"]
             cell = f"\\textbf{{{pct(rate)}}}" if rate in (0.0, 1.0) else pct(rate)
             rows.append(f"    {label} & {pretty[m]} & {thr} & {rng} & {cell} \\\\")
@@ -411,7 +411,7 @@ def tab_budget_match() -> None:
         cells = []
         for m in ("entropy", "margin", "hallucination_probe"):
             st = stats.get(m)
-            cells.append(pct(st["fire"] / st["n"]) if st else "---")
+            cells.append(pct(st["fire"] / st["n"]) if st else "n/a")
         rows.append(f"    {model} & {kind} & " + " & ".join(cells)
                     + f" & {pct(s.retrieval_rate)} \\\\")
 

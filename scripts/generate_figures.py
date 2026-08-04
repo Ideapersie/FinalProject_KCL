@@ -351,7 +351,7 @@ def fig_scaling() -> None:
                   if plt.rcParams["text.usetex"] else
                   "retrieval budget actually spent (% of queries)")
     ax.set_ylabel("MCQ accuracy (%)")
-    ax.set_title("Retrieval costs accuracy on this corpus — at all three model scales")
+    ax.set_title("Retrieval costs accuracy on this corpus, at all three model scales")
     ax.grid(True, alpha=0.25, linewidth=0.6)
     ax.set_axisbelow(True)
     for side in ("top", "right"):
@@ -451,7 +451,7 @@ def fig_signal_shift() -> None:
         if mcq["tau"] is not None:
             ax.axvline(mcq["tau"], color="#111111", linestyle="--", linewidth=1.6,
                        label=f"$\\tau$ fitted on MCQ = {mcq['tau']:.3f}")
-        ax.set_title(f"{model} — {member}", fontsize=9)
+        ax.set_title(f"{model}: {member}", fontsize=9)
         ax.set_ylabel("density", fontsize=8)
         ax.grid(True, alpha=0.25, linewidth=0.6)
         ax.set_axisbelow(True)
