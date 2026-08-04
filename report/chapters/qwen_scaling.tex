@@ -26,7 +26,7 @@ model'' is not confounded with ``less aggressively quantised model''. Where
 something \emph{had} to change --- the gate thresholds --- that change is
 itself the object of study rather than a nuisance parameter.
 
-\input{../results/tables/tab_scaling_results}
+\input{results/tables/tab_scaling_results}
 
 \section{Closed-Book Capability Rises With Scale}
 \label{sec:qwen-closedbook}
@@ -76,7 +76,7 @@ always-retrieve'' is a claim about accuracy \emph{at a given retrieval rate}.
 \section{The Budget Did Not Match, and Why}
 \label{sec:qwen-budget}
 
-\input{../results/tables/tab_budget_match}
+\input{results/tables/tab_budget_match}
 
 The refit did not achieve its target. Against the 3B's \retPfiveMcq{}
 ensemble budget, Qwen realised \retQwenPfiveMcq{}. The two tunable members
@@ -116,7 +116,7 @@ The thresholds refitted in Section~\ref{sec:qwen-nontransfer} were fitted on
 multiple-choice drafts and then reused, unchanged, for the open-ended runs.
 That reuse is unsound, and the open-ended evidence shows how badly.
 
-\input{../results/tables/tab_gate_saturation}
+\input{results/tables/tab_gate_saturation}
 
 The entropy gate votes to retrieve when its signal exceeds $\tau$. On Qwen's
 open-ended questions the \emph{smallest} observed signal,

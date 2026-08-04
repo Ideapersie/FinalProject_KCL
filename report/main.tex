@@ -3,13 +3,17 @@
 %  Adaptive Retrieval Gating for Safety-Aware Medical RAG
 %  Tharit Mohamed Hussain Khan (22058691) — KCL MSc AI — 7CCSMPRJ
 %
-%  Build:  pdflatex main  ->  bibtex main  ->  pdflatex main  ->  pdflatex main
-%  (or use latexmk -pdf main.tex)
+%  BUILD FROM THE REPO ROOT, not from inside report/ — every generated table
+%  and figure is referenced repo-root relative (results/tables, results/figures):
+%      latexmk -pdf -outdir=report/build report/main.tex
+%  or:  pdflatex report/main -> bibtex -> pdflatex report/main (x2)
+%  On Overleaf, upload the repo root as the project and set report/main.tex as
+%  the main document; Overleaf resolves \input against the project root.
 %
-%  Target length ~15,000 words. Chapters live in chapters/ and are pulled in
-%  with \input{}. The four existing "weekN" files are being re-threaded into
-%  the coherent chapters below (Methodology / Implementation / Evaluation) and
-%  should be dropped from the \input list once their content has migrated.
+%  Target length ~15,000 words (body only); currently ~14,700.
+%  Chapters live in chapters/ and are pulled in with \input{}. The weekN sprint
+%  files and the two pre-merge scaling chapters are retired — see the \input
+%  list at the end of this file.
 % =====================================================================
 \documentclass[11pt,a4paper]{report}
 
@@ -32,9 +36,11 @@
 \usepackage{enumitem}
 \usepackage[numbers]{natbib}    % \bibliographystyle{plainnat}
 
-% Chapters reference figures as "results/figures/fig_x" (repo-root relative),
-% so add the repo root. The bare figures dir is kept too for any short names.
-\graphicspath{{../}{../results/figures/}}   % figures generated from logs
+% All generated assets are referenced repo-root relative: tables as
+% \input{results/tables/...} and figures as "results/figures/fig_x". This
+% document must therefore be compiled with the REPO ROOT as the working
+% directory (see the build note above), not from inside report/.
+\graphicspath{{../}{results/figures/}}   % figures generated from logs
 
 % ---- Generated numbers (MUST precede any chapter that uses them) ----
 % numbers.tex defines a macro for every result figure cited in the text
@@ -44,7 +50,7 @@
 %     python scripts/generate_tables.py
 % A regression test (tests/regression/test_no_number_drift.py) fails the build if
 % any of these are hand-edited or fall out of step with the logs.
-\input{../results/tables/numbers}
+\input{results/tables/numbers}
 
 % ---- Shared listing style (chapters may redefine locally; harmless) ----
 \lstdefinestyle{pyqvault}{

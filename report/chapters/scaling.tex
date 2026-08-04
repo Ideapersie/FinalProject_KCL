@@ -2,7 +2,7 @@
 % Chapter: the scaling study (Llama-3.2-3B, Qwen2.5-7B, Qwen2.5-14B)
 % Merged 2026-08-04 from qwen_scaling.tex + model_comparison.tex (both
 % retired from main.tex; kept in git history).
-% Every number is a macro from ../results/tables/numbers.tex. Do not write
+% Every number is a macro from results/tables/numbers.tex. Do not write
 % literals here -- see scripts/generate_tables.py.
 % ---------------------------------------------------------------------
 
@@ -30,7 +30,7 @@ something \emph{had} to change, namely the gate thresholds, that change is
 itself the object of study rather than a nuisance parameter.
 Table~\ref{tab:scaling-results} carries the full numbers.
 
-\input{../results/tables/tab_scaling_results}
+\input{results/tables/tab_scaling_results}
 
 One validity constraint governs how the table may be read, and it is stated
 before any result. ``Selective retrieval beats always-retrieve'' is a
@@ -75,7 +75,7 @@ budget preserves the quantity the comparison is actually about.
 \section{The Budget Did Not Match, and Why}
 \label{sec:scaling-budget}
 
-\input{../results/tables/tab_budget_match}
+\input{results/tables/tab_budget_match}
 
 The refit did not achieve its target. Against the 3B's \retPfiveMcq{}
 ensemble budget, the 7B realised \retQwenPfiveMcq{} and the 14B
@@ -188,7 +188,7 @@ The thresholds refitted in Section~\ref{sec:scaling-nontransfer} were
 fitted on multiple-choice drafts. Reusing them unchanged on open-ended
 drafts proved unsound, and the evidence shows how badly.
 
-\input{../results/tables/tab_gate_saturation}
+\input{results/tables/tab_gate_saturation}
 
 The entropy gate votes to retrieve when its signal exceeds $\tau$; on the
 7B's open-ended questions the \emph{smallest} observed signal,
