@@ -1,6 +1,8 @@
 % =====================================================================
-%  Chapter 8 — Conclusion and Future Work  (~900 words)
-%  DRAFT generated 2026-07-18.
+%  Chapter 9 - Conclusion and Future Work
+%  Trimmed 2026-08-05. The contribution list no longer restates the
+%  evidence already given in Chapters 5, 6 and 7; each contribution is one
+%  sentence plus its pointer. Labels preserved.
 % =====================================================================
 \chapter{Conclusion and Future Work}
 \label{ch:conclusion}
@@ -10,110 +12,87 @@
 
 This dissertation asked when an offline, CPU-only medical question-answering
 system should retrieve, and answered it with a training-free three-gate
-ensemble evaluated end-to-end on three quantised models, at 3B, 7B and 14B,
-over a 426K-chunk medical corpus. The contributions, with their
-evidence:
+ensemble evaluated end to end on three quantised models over a 426K-chunk
+medical corpus. Seven contributions follow, each carrying its evidence.
 
-\textbf{A working training-free gate} (C1). Token entropy, logit margin and
-a two-draft hallucination probe, majority-voted, with hardware-aware
+\textbf{C1, a working training-free gate.} Token entropy, logit margin and a
+two-draft hallucination probe combined by majority vote with hardware-aware
 degradation, requiring no fine-tuning, no labelled data and no second model
 (Chapter~\ref{ch:method}).
 
-\textbf{Calibration non-transfer} (C2). Literature thresholds are physically
-unreachable on the quantised model (observed entropy 0.27--1.59 nats against
-a 2.5-nat trigger); offline replay recalibration finds usable operating
-points in seconds. Gate thresholds are model-specific and must be treated as
-such (Section~\ref{sec:eval-calibration}).
+\textbf{C2, calibration non-transfer.} Literature thresholds are physically
+unreachable on a quantised model, and offline replay recalibration finds
+usable operating points in seconds, so gate thresholds are model-specific and
+must be treated as such (Section~\ref{sec:eval-calibration}).
 
-\textbf{Retrieval as distraction} (C3). Retrieval broke 46 previously
-correct answers and fixed 13, a harmful ratio of $3.5{:}1$, with chunks equally
-on-topic but $2.4\times$ less answer-bearing where it harmed
+\textbf{C3, retrieval as distraction.} Retrieval broke \breakLlama{}
+previously correct answers and fixed \fixLlama{}, with chunks equally on-topic
+but $2.4\times$ less answer-bearing where it harmed
 (Section~\ref{sec:eval-distraction}).
 
-\textbf{The protective skip} (C4). On those poisoned questions the gate's
-skip scored 19/19; its retrieve, 3/27. The gate's value on this evidence is
-protection at the boundary of parametric knowledge, not merely cost saving
+\textbf{C4, the protective skip.} On those poisoned questions the gate's skip
+decision scored 19/19 against 3/27 for its retrieve decision, so its value is
+protection at the boundary of parametric knowledge rather than cost saving
 (Section~\ref{sec:eval-protective}).
 
-\textbf{The safety envelope} (C5). At 3B no policy clears any stipulated
-clinical bar, since the best, closed-book at \accPthreeMcq{}, is
-\gapToLowBar{}pp short of the lowest; at 7B and 14B the low-risk bar is
-cleared and the medium-risk bar is not. The measured distance to clinical
-acceptability for this deployment class is the honest deliverable
+\textbf{C5, the safety envelope.} A risk-stratified measurement of the
+distance between this system and clinical acceptability, empty at 3B and
+clearing only the low-risk bar at 7B and 14B
 (Sections~\ref{sec:eval-envelope}, \ref{sec:scaling-bars}).
 
-\textbf{The scaling study} (C6). Three models on identical corpus,
-questions and code: closed-book accuracy rises \scaleGainSmall{}pp from 3B
-to 7B, then only \scaleGainLarge{}pp to 14B, a saturating curve that
-flattens below the medium-risk bar. Calibration non-transfer recurs
-prospectively at every scale; distraction \emph{grows} with capability
-(\breakLlama{} $\rightarrow$ \breakQwenFourteen{} broken answers); the
-open-ended retrieval-helps ordering inverts at 7B and stays inverted; and
-at 14B selective-beats-always is statistically significant for the first
-time (\diffFourteenPfivePone{}pp, CI \diffFourteenPfivePoneCI{})
-(Chapter~\ref{ch:scaling}).
+\textbf{C6, a three-model scaling study.} Identical corpus, questions and
+code at 3B, 7B and 14B, showing a closed-book curve that plateaus below the
+medium-risk bar, calibration non-transfer recurring prospectively at every
+scale, distraction growing with capability, and a selective-retrieval
+advantage that reaches significance at 14B (Chapter~\ref{ch:scaling}).
 
-\textbf{A reproducible harness} (C7). Log-generated numbers with a
-drift-guard test, 240 model-free unit tests, paired-run proofs, exact
+\textbf{C7, a reproducible harness.} Log-generated numbers behind a
+drift-guard test, 240 model-free tests, paired-run proofs and verified
 determinism (Chapter~\ref{ch:impl}).
 
-Every claim is held at the strength its evidence supports: the retrieval
-halving (\retPfiveMcq{} versus \retPoneMcq{}) is exact; the 3B accuracy
-gain (\diffPfivePone{}pp, 95\% CI \diffPfivePoneCI{}) is consistent with an
-improvement while the 14B gain (\diffFourteenPfivePone{}pp, CI
-\diffFourteenPfivePoneCI{}) is established; the medium-risk bar is
-unreached at every scale. If one sentence survives this dissertation, it
-should be this: retrieval, the field's default remedy for hallucination,
-made these models \emph{worse} on questions they already knew, most of
-all the largest, which had the most correct knowledge to lose, and the
-gate's contribution is knowing when not to use it.
+Every claim is held at the strength its evidence supports, so the retrieval
+halving (\retPfiveMcq{} against \retPoneMcq{}) is exact, the 3B accuracy gain
+is consistent with an improvement while the 14B gain
+(\diffFourteenPfivePone{}pp, CI \diffFourteenPfivePoneCI{}) is established,
+and the medium-risk bar is unreached at every scale. If one sentence survives
+this dissertation it should be that retrieval, the field's default remedy for
+hallucination, made these models worse on questions they already knew, most of
+all the largest, and the gate's contribution is knowing when not to use it.
 
 \section{Future Work}
 \label{sec:conc-future}
 
-Ordered by ratio of value to effort, each specific enough to pick up:
-
 \begin{enumerate}
-  \item \textbf{Extending the scaling curve.} The three-model study
-    settled the questions single-model evidence could not, but its two
-    larger points share a family. A second model family at 7B--14B would
-    separate family effects from scale effects; a fourth, larger scale
-    would test whether the closed-book plateau is genuine saturation; and a
-    gate ensemble whose every member is recalibratable (replacing the
-    threshold-free probe) would restore matched-budget comparison across
-    models, the one comparison this study could not make
+  \item \textbf{Extending the scaling curve.} A second model family at 7B to
+    14B would separate family effects from scale effects, a fourth scale
+    would test whether the closed-book plateau is genuine saturation, and an
+    ensemble whose every member is recalibratable would restore the
+    matched-budget comparison this study could not make
     (Section~\ref{sec:scaling-budget}).
-  \item \textbf{Content-aware entropy.} Section~\ref{sec:eval-attribution}
-    showed raw token entropy fires on phrasing, not clinical content.
-    Restricting the mean to content tokens, or weighting by attention to the
-    question's clinical terms, directly attacks the method's clearest
-    measured weakness, and can be prototyped offline against the logged
-    per-token arrays before any live run.
-  \item \textbf{Retrieval-aware (post-hoc) gating.} The distraction analysis
-    showed the harmful case is topically-relevant, non-answer-bearing
-    chunks. The current gate must commit \emph{before} seeing any evidence;
-    a second-stage gate asking ``having seen the chunks, are they
-    decisive?'' could reject a retrieval after the fact and reclaim part of
-    the 3/27 failure region.
-  \item \textbf{Gate cost optimisation.} The entropy and margin signals
-    derive from the same draft but are currently generated twice; merging
-    them cuts five model calls per query to four ($\sim$20\% latency), and a
-    probe-free logit-only configuration would remove the two probe drafts
-    that dominate cost, at a measured accuracy trade-off to be
-    quantified. Section~\ref{sec:eval-cost} shows latency, not retrieval
-    rate, is the binding cost on CPU.
-  \item \textbf{Statistical power.} The full 7,663-question MIRAGE
-    benchmark, multiple seeds, and a purposely balanced high-risk stratum,
-    given that the current $n=6$ is the single weakest point of the safety
-    analysis, would convert suggestive intervals into decidable ones.
-  \item \textbf{Deployment surface.} A human-in-the-loop interface exposing
-    the gate decision, its signals and per-token uncertainty to a clinician
-    reviewer; and physical benchmarking of the low/high hardware tiers on
-    real 4\,GB and 16\,GB devices, closing the gap between the implemented
-    mechanism and the measured claim.
+  \item \textbf{Content-aware entropy.} Restricting the entropy mean to
+    content tokens, or weighting it by attention to the question's clinical
+    terms, attacks the method's clearest measured weakness
+    (Section~\ref{sec:eval-attribution}) and can be prototyped offline against
+    the logged per-token arrays.
+  \item \textbf{Retrieval-aware gating.} The current gate must commit before
+    seeing any evidence, so a second-stage gate asking whether the retrieved
+    chunks are actually decisive could reject a retrieval after the fact and
+    reclaim part of the 3/27 failure region.
+  \item \textbf{Gate cost optimisation.} Merging the entropy and margin
+    drafts cuts five model calls per query to four, and a probe-free
+    logit-only configuration would remove the two probe drafts that dominate
+    cost, at an accuracy trade-off still to be quantified
+    (Section~\ref{sec:eval-cost}).
+  \item \textbf{Statistical power.} The full 7,663-question MIRAGE benchmark,
+    multiple seeds and a deliberately balanced high-risk stratum would
+    convert suggestive intervals into decidable ones.
+  \item \textbf{Deployment surface.} Extending the interface of
+    Section~\ref{sec:impl-demo} into a validated clinician-facing review tool,
+    and physically benchmarking the low and high hardware tiers on real 4\,GB
+    and 16\,GB devices.
 \end{enumerate}
 
-The through-line of all six is the same as the dissertation's: in
-safety-critical, resource-constrained settings, the interesting question is
-not how to make a model retrieve better, but how to make a system know when
-its model already knows.
+The through-line of all six is the dissertation's own, which is that in
+safety-critical and resource-constrained settings the interesting question is
+not how to make a model retrieve better but how to make a system know when its
+model already knows.

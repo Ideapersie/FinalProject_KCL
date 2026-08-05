@@ -1,6 +1,8 @@
 % =====================================================================
-%  Chapter 6 — Discussion  (~1,500 words)
-%  DRAFT generated 2026-07-18.
+%  Chapter 7 - Discussion
+%  Trimmed 2026-08-05 for the word limit. Section 7.1 no longer re-narrates
+%  evidence already given in Chapters 5 and 6; every limitation is retained,
+%  several merged. All labels preserved.
 % =====================================================================
 \chapter{Discussion}
 \label{ch:discussion}
@@ -8,264 +10,178 @@
 \section{What the Findings Mean Together}
 \label{sec:disc-synthesis}
 
-Read separately, the results of Chapter~\ref{ch:eval} are a mixed report
-card: the gated policy beats always-retrieve but trails closed-book on
-multiple choice, leads on open-ended, and costs more wall-clock time than
-either. Read together, they assemble into a single argument that revises
-what a retrieval gate is for.
+Read separately the results of Chapter~\ref{ch:eval} are a mixed report card,
+since the gated policy beats always-retrieve, trails closed-book on multiple
+choice, leads on open-ended, and costs more wall-clock time than either. Read
+together they assemble into one argument, which is that retrieval is not a
+free safety net and that a gate's value is therefore protection rather than
+efficiency.
 
-The starting observation is that \emph{retrieval is not a free safety net}.
-On questions the model already answers correctly, injecting
-topically-relevant-but-non-decisive context makes it worse at a ratio of
-3.5 broken answers for every one fixed
-(Section~\ref{sec:eval-distraction}). The mechanism is displacement, not
-noise: the model defers to the provided context, as RAG prompting
-instructs it to, and abandons parametric knowledge that was correct. The
-standard RAG assumption, that context is at worst neutral, is false for this
-model class.
+The starting observation is that injecting topically relevant but
+non-decisive context makes the model worse on questions it already answers
+correctly, at a ratio of 3.5 broken answers for every one fixed
+(Section~\ref{sec:eval-distraction}). The mechanism is displacement rather
+than noise, since the model defers to the provided context exactly as RAG
+prompting instructs it to and abandons parametric knowledge that was correct,
+so the standard assumption that retrieved context is at worst neutral is false
+for this model class.
 
-A natural objection is that this ``distraction'' is really \emph{absence}:
-perhaps retrieval hurts simply because the corpus does not contain the
-answer. Three lines of evidence rule that out as the primary cause. If the
-corpus lacked answers, retrieval could never turn a wrong answer right, yet
-it \emph{fixes} \fixLlama{}, \fixQwenSeven{} and \fixQwenFourteen{}
-closed-book errors at 3B, 7B and 14B. Retrieval measurably \emph{helps} the
-weakest model on open-ended questions (P1 \fOnePoneOpen{} over P3
-\fOnePthreeOpen{}), which is impossible if the information is not there. And
-decisively, the harm \emph{grows} with capability
-(Section~\ref{sec:scaling-mechanism}): a corpus that merely lacked
-information would damage a stronger model \emph{less}, since that model can
-fall back on what it knows, yet the strongest model is harmed the most,
-because it has the most correct parametric knowledge to be displaced.
-Absence cannot produce that gradient; displacement is its signature.
+The natural objection is that the effect is really absence, meaning that
+retrieval hurts because the corpus does not contain the answer. Three lines of
+evidence rule that out as the primary cause. Retrieval fixes \fixLlama{},
+\fixQwenSeven{} and \fixQwenFourteen{} closed-book errors at 3B, 7B and 14B,
+which a corpus without answers could not do, and it measurably helps the
+weakest model on open-ended questions. Decisively, the harm grows with
+capability (Section~\ref{sec:scaling-mechanism}), whereas a corpus that merely
+lacked information would damage a stronger model less. Absence cannot produce
+that gradient, and displacement is its signature.
 
-If retrieval can be poison, then the value of a gate is not primarily
-\emph{efficiency}, the framing the adaptive-retrieval literature has
-largely adopted, but \emph{protection}. The sharpest evidence is the
-protective-skip result (Section~\ref{sec:eval-protective}): on precisely the
-questions where retrieval breaks a correct answer, the gate's skip decision
-scored 19/19, its retrieve decision 3/27. The gate's real job, on this
-evidence, is to detect the boundary of the model's parametric knowledge and
-defend everything inside it.
-
-That reframing also resolves the apparent MCQ/open-ended contradiction
-without special pleading. MIRAGE's multiple-choice questions sit largely
-\emph{inside} the 3B model's parametric knowledge, so retrieval can only
-distract and closed-book wins; PubMedQA's research questions sit largely
-\emph{outside} it, so retrieval adds information and the gated policy wins.
-One boundary, two sides, one gate whose task is to tell them apart. Even the
+If retrieval can be poison, the value of a gate is protection rather than the
+efficiency the adaptive-retrieval literature has largely framed it as, and the
+sharpest evidence is the protective-skip result of
+Section~\ref{sec:eval-protective}. The gate's real job on this evidence is to
+locate the boundary of the model's parametric knowledge and defend everything
+inside it, which also resolves the apparent contradiction between the two
+question types. MIRAGE's multiple-choice questions sit largely inside the 3B
+model's parametric knowledge, so retrieval can only distract, while PubMedQA's
+research questions sit largely outside it, so retrieval adds information. One
+boundary, two sides, and one gate whose task is to tell them apart. The
 refuted ablation hypothesis (Section~\ref{sec:eval-ablation}) folds into the
-same picture: probe-boosting variants fail because they retrieve more, and
-on a benchmark where marginal retrievals hurt, the most conservative voting
-rule wins. Three independent analyses, namely the paired study, the
-protective skip and the ablation, converge on the same conclusion from different
-directions, which is the kind of agreement that survives scrutiny better
-than any single number.
+same picture, since the probe-boosting variants fail by retrieving more, so
+three independent analyses converge on one conclusion from different
+directions.
 
 \section{Limitations and Threats to Validity}
 \label{sec:disc-limitations}
 
-The following limitations are stated in full, ordered roughly by how much
-they constrain the conclusions.
+The following limitations are ordered roughly by how much they constrain the
+conclusions.
 
-\paragraph{Statistical power.} $n=\nQuestions{}$ per condition, one seed, one
-run per configuration. The headline accuracy gap of \diffPfivePone{}pp
-carries a 95\% CI of \diffPfivePoneCI{}, which crosses zero: this study is
-\emph{not powered to establish the accuracy claim}, and the abstract and
-conclusion phrase it accordingly (``consistent with an improvement''). The
-retrieval-cost halving is a count and is exact for this sample. The
-high-risk stratum ($n=6$, Wilson CIs $\approx \pm 30$pp) supports no
-between-policy comparison at all.
+\paragraph{Statistical power.} $n=\nQuestions{}$ per condition, one seed and
+one run per configuration. The 3B accuracy gap of \diffPfivePone{}pp carries a
+95\% CI of \diffPfivePoneCI{}, which crosses zero, so this study is not
+powered to establish the accuracy claim at that scale and the abstract and
+conclusion phrase it as consistent with an improvement. The retrieval-cost
+halving is a count and is exact for the sample. The high-risk stratum ($n=6$,
+Wilson intervals of roughly $\pm 30$pp) supports no between-policy comparison
+at all.
 
-\paragraph{Scaling arm: three points, one family.} The scaling study
-(Chapter~\ref{ch:scaling}) runs the full pipeline at 3B, 7B
-and 14B and confirms calibration non-transfer prospectively at each new scale.
-The ordering P3 $>$ P5 $>$ P1 reproduces on multiple-choice at all three scales,
-and the open-ended ordering \emph{inverts} between the smallest model
-(retrieval helps) and the two larger ones (retrieval hurts). But three points
-are still a curve through one Llama model and two Qwen models, not a claim about
-model families in general, and the two larger points come from the same family,
-so a family effect cannot be separated from a scale effect between them. The
-curve is also visibly \emph{saturating}, since the closed-book gain from 7B to
+\paragraph{Scaling arm: three points, one family.} Three points are a curve
+through one Llama model and two Qwen models rather than a claim about model
+families in general, and because the two larger points come from the same
+family a family effect cannot be separated from a scale effect between them.
+The curve is also visibly saturating, since the closed-book gain from 7B to
 14B (\scaleGainLarge{}pp) is a fraction of the 3B-to-7B gain
 (\scaleGainSmall{}pp), so extrapolating it to the higher safety bars would be
 unwarranted.
 
 \paragraph{Corpus completeness and retrieval quality.} The distraction result
-does not exonerate the corpus. The index is \textasciitilde426K chunks drawn
-from MedRAG textbooks and a 300K-passage PubMed slice; StatPearls, part of the
-full MedRAG corpus, was unavailable at build time, so this is a subset rather
-than the maximal medical corpus. The chunk-relevance analysis
-(Section~\ref{sec:eval-distraction}) found the answer-bearing passage is
-retrieved for only a minority of questions even when the gated answer is
-correct, so there is genuine retrieval-quality headroom: a fuller corpus or a
-stronger retriever could surface the decisive passage more often and reduce the
-damage on the questions where retrieval currently breaks a correct answer.
-The claim defended here is therefore the narrower one, that on \emph{this}
-corpus and retriever, and for these models, the dominant failure mode is
-displacement of correct parametric knowledge rather than absence of information
-(the three-model evidence above), rather than that retrieval quality is
-irrelevant.
-Whether a substantially better retrieval stack would flip any of the MCQ
-orderings is untested and is left to future work.
+does not exonerate the corpus. StatPearls was unavailable at build time, so
+the index is a subset of the full MedRAG corpus, and the answer-bearing
+passage is retrieved for only a minority of questions even when the gated
+answer is correct. There is therefore genuine retrieval-quality headroom, and
+the claim defended here is the narrower one, that on this corpus and retriever
+the dominant failure mode is displacement rather than absence. Whether a
+better retrieval stack would flip any multiple-choice ordering is untested.
 
 \paragraph{Retrieval budgets are not matched across models.} Llama's gated
-policy retrieved on \retPfiveMcq{} of queries, Qwen's on
-\retQwenPfiveMcq{}, a gap of \budgetGapMcq{}pp. Thresholds for Qwen were
-refitted to reproduce the 3B's \emph{per-gate} budget and the two tunable
-members landed close to target, but the hallucination probe is threshold-free
-on multiple-choice (two drafts agree on a letter or they do not) and so
-cannot be recalibrated at all. Its vote rate fell from \probeFireLlamaMcq{}
-to \probeFireQwenMcq{} because the larger model self-agrees far more often,
-and with one member of a majority-of-three effectively silent the ensemble
-collapses to a conjunction of the other two and cannot reach the intended
-rate. The consequence is precise and worth stating plainly: \emph{``selective
-retrieval beats always-retrieve at a matched budget'' is established within
-each model and not across them}, because the cross-model comparison confounds
-scale with retrieval rate. Only the closed-book policies, which retrieve 0\%
-by definition, are cleanly comparable between models.
+policy retrieved on \retPfiveMcq{} of queries against Qwen's
+\retQwenPfiveMcq{}, a gap of \budgetGapMcq{}pp, for the reason given in
+Section~\ref{sec:scaling-budget}. The consequence is worth stating plainly:
+the claim that selective retrieval beats always-retrieve at a matched budget
+is established within each model and not across them, because the cross-model
+comparison confounds scale with retrieval rate. Only the closed-book policies,
+which retrieve 0\% by definition, are cleanly comparable between models.
 
 \paragraph{Gate thresholds are task-specific, and were not treated as such.}
 Thresholds were fitted on multiple-choice drafts and reused unchanged on
-open-ended drafts. That is unsound: a multiple-choice draft is a single
-letter and an open-ended draft is a paragraph, and their signal
-distributions do not coincide. On Qwen the reuse was catastrophic: the
-entropy signal's minimum (\qwenOpenEntropyMin{}) lies above its threshold
-(\qwenOpenEntropyTau{}) and the margin signal's maximum
-(\qwenOpenMarginMax{}) lies below its own (\qwenOpenMarginTau{}), so every
-question retrieved and gated P5 degenerated into always-retrieve P1. No
-open-ended selective-retrieval result can be drawn from that run. Llama
-avoided total saturation only because its $\tau = 0.70$ happens to fall
-inside its open-ended distribution, which is luck rather than design; its
-open-ended retrieval rate of \retPfiveOpen{} still overshoots the intended
-budget substantially. The general lesson is that a gate threshold is a
-property of a model \emph{and} a task format, and the method as implemented
-encodes only the former.
+open-ended drafts, which is unsound because the two draft types have signal
+distributions that do not coincide. On Qwen the reuse was catastrophic and
+gated P5 degenerated into always-retrieve P1, so no open-ended
+selective-retrieval result can be drawn from that run. Llama avoided total
+saturation only because its $\tau = 0.70$ happens to fall inside its
+open-ended distribution, and even then it overshot its intended budget. The
+general lesson is that a gate threshold is a property of a model and a task
+format, and the method as implemented encodes only the former.
 
 \paragraph{The open-ended metric barely discriminates.} Every open-ended
-condition in this study scores between $0.19$ and $0.26$ mean token-$F_1$
-while the underlying behaviour ranges from answering essentially every
-question to declining \retPoneOpen{} of them. Declining costs almost
-nothing: on always-retrieve, refusals average $0.217$ and substantive
-answers $0.244$. Token-$F_1$ against a paragraph-length gold answer rewards
-fluent medical prose whether or not it addresses the question, so the metric
-cannot separate a good answer from a well-phrased refusal, and supports
-\emph{relative} comparison between policies only, never absolute quality
-claims. Open-ended conclusions are therefore weakly supported in
-\emph{either} direction, which is a measurement limitation rather than a null
-result, which a sharper metric (entailment against the gold claim, or human
-adjudication) would be required to settle. The problem compounds with a
-corpus--benchmark mismatch: PubMedQA asks about the findings of specific
-studies, which the textbook-and-abstract corpus largely does not contain, so
-retrieval raises the refusal rate to \retPoneOpen{} under always-retrieve
-and the open-ended arm partly measures corpus coverage rather than gating.
+condition scores between $0.19$ and $0.26$ mean token-$F_1$ while the
+underlying behaviour ranges from answering essentially every question to
+declining \retPoneOpen{} of them, and refusals average $0.217$ against
+$0.244$ for substantive answers. Token-$F_1$ against a paragraph-length gold
+answer rewards fluent medical prose whether or not it addresses the question,
+so it supports relative comparison between policies and never absolute quality
+claims. The problem compounds with a corpus-benchmark mismatch, since PubMedQA
+asks about the findings of specific studies the textbook-and-abstract corpus
+largely does not contain, so the open-ended arm partly measures corpus
+coverage rather than gating.
 
-\paragraph{Entropy gate omits the draft's first token.} The entropy gate
-slices the logit buffer one row late, so $\bar{H}$ averages the draft's
-second and subsequent tokens rather than all of them. The bias is
-deterministic and identical across every question and both models, and
-$\tau$ was calibrated on the same shifted quantity, so internal validity and
-cross-model comparability are unaffected; what narrows is the definitional
-claim. It was found too late to correct without re-running calibration and
-evaluation on both models. See
-Section~\ref{sec:limitation-entropy-offset} for the measurement and the
-reasoning.
-
-\paragraph{Hardware tiers not physically benchmarked.} The tier-adaptive
-degradation mechanism is implemented and unit-tested, but only the medium
-tier was actually run. The original project plan promised physical
-benchmarking on three device classes; what was delivered is the mechanism
-plus single-tier measurements, and this dissertation does not imply
-otherwise.
-
-\paragraph{Benchmark narrowness.} MCQ evaluation uses one MIRAGE subset
-(MMLU-Med); open-ended evaluation uses PubMedQA only, after the originally
-planned dataset proved unreachable. MIRAGE is entirely multiple-choice,
-which is precisely why the open-ended complement matters, but one dataset
-per question type limits generality.
-
-\paragraph{Energy measurement.} Energy figures are \texttt{codecarbon}
-software estimates, not metered hardware power measurements.
-
-\paragraph{Risk tagger.} The clinical-risk tagger is a keyword rule set,
-chosen deliberately for auditability, since a learned classifier would
-obscure the basis of a safety-relevant label and no training data exists,
-but it has recall gaps on implicitly high-risk questions. That gap is partly
-\emph{why} the high-risk stratum is only $n=6$: the tagger finds explicit
-dosing/interaction cues, not subtle criticality.
-
-\paragraph{Stipulated safety bars.} The 70/80/90\% bars are stipulated, not
-derived from clinical evidence. Different bars would move the envelope's
-edges, though at current accuracy no defensible bar would be met.
+\paragraph{Remaining constraints.} Four smaller limitations are recorded
+together. The tier-adaptive degradation mechanism is implemented and unit
+tested but only the medium hardware tier was physically run, so the promised
+three-device benchmarking was not delivered. Multiple-choice evaluation uses
+one MIRAGE subset and open-ended evaluation one dataset, which limits
+generality. Energy figures are \texttt{codecarbon} software estimates rather
+than metered hardware measurements. And the clinical-risk tagger is a keyword
+rule set with recall gaps on implicitly high-risk questions, which is partly
+why the high-risk stratum is only $n=6$, while the 70/80/90\% bars themselves
+are stipulated rather than derived from clinical evidence.
 
 \subsection{Off-by-one in the entropy gate's logit slice}
 \label{sec:limitation-entropy-offset}
 
-The entropy gate reads per-token logit distributions from
-\texttt{llama-cpp-python}'s \texttt{\_scores} buffer, slicing generated-token
-rows as \texttt{\_scores[n\_prompt : n\_prompt + max\_tokens]} where
-\texttt{n\_prompt} is \texttt{len(tokenize(prompt))}. That start index is one
-row too high: \texttt{tokenize()} prepends a beginning-of-sequence token the
-completion's context does not contain, so the prompt occupies
-$n_{\text{prompt}} - 1$ rows. The discrepancy was confirmed directly, since
-under greedy decoding the $\arg\max$ of each logit row must be the token that
-row produced, and for a 48-token draft the slice beginning at
+The entropy gate slices generated-token rows from
+\texttt{llama-cpp-python}'s \texttt{\_scores} buffer starting at
+\texttt{len(tokenize(prompt))}, which is one row too high because
+\texttt{tokenize()} prepends a beginning-of-sequence token the completion's
+context does not contain. The discrepancy was confirmed directly, since under
+greedy decoding the $\arg\max$ of each logit row must be the token that row
+produced, and for a 48-token draft the slice beginning at
 $n_{\text{prompt}} - 1$ reproduced all 48 generated tokens while the slice
-beginning at $n_{\text{prompt}}$ reproduced none. The practical consequence
-is that $\bar{H}$ averages generated tokens $2 \ldots N$ rather than
-$1 \ldots N$. On a representative clinical question the omitted first token
-was the draft's highest-entropy one ($H = 3.28$ nats), and excluding it
-lowered the gate signal from $0.763$ to $0.709$ against $\tau = 0.70$.
+beginning at $n_{\text{prompt}}$ reproduced none. The practical consequence is
+that $\bar{H}$ averages generated tokens $2 \ldots N$ rather than
+$1 \ldots N$, and on a representative clinical question the omitted first
+token was the draft's highest-entropy one at $H = 3.28$ nats, which lowered
+the gate signal from $0.763$ to $0.709$ against $\tau = 0.70$.
 
-This does not invalidate the reported results. The bias is deterministic and
-identical across every question and every model, so it is a consistent
-redefinition of the signal rather than a source of noise; $\tau$ was
-calibrated on the same shifted quantity, so the retrieval budget it produces
-is the budget actually delivered; and the budget-matching procedure inherits
-the identical bias at all three scales, keeping the cross-model comparison
-like-for-like. What narrows is the definitional claim: the quantity this work
-calls mean draft entropy is the mean over the draft's second and subsequent
-tokens. Correcting it was judged the greater risk at the point of discovery,
-since re-slicing would shift $\bar{H}$ upward on every question, move an
-unknown number of near-threshold decisions across $\tau$, and require full
-recalibration and re-evaluation on all three models. A corrected slice is the
-first item of future work and is a single-line change once there is time to
-re-run the calibration behind it.
+This does not invalidate the reported results, because the bias is
+deterministic and identical across every question and every model, $\tau$ was
+calibrated on the same shifted quantity so the retrieval budget it produces is
+the budget actually delivered, and the budget-matching procedure inherits the
+identical bias at all three scales. What narrows is the definitional claim,
+since the quantity this work calls mean draft entropy is the mean over the
+draft's second and subsequent tokens. Correcting it was judged the greater
+risk at the point of discovery, because re-slicing would move an unknown
+number of near-threshold decisions across $\tau$ and require full
+recalibration and re-evaluation on all three models.
 
 \section{Implications for Offline Clinical Deployment}
 \label{sec:disc-deployment}
 
-What should a practitioner take from this work?
+\paragraph{Do not deploy at this scale.} A quantised 3B model, gated or not,
+is \gapToLowBar{}pp short of even the lowest stipulated bar, and scaling
+improves this without resolving it. This deployment class is not fit for
+clinical decision support beyond the lowest-risk stratum, and the honest
+output of the evaluation is the measured distance rather than a product. The
+professional and regulatory consequences are taken up in
+Chapter~\ref{ch:lsep}.
 
-\paragraph{Do not deploy at this scale.} The unambiguous first implication:
-a quantised 3B model, gated or not, is \gapToLowBar{}pp short of even the
-lowest stipulated bar, and its safety envelope is empty. Scaling improves
-but does not resolve this: the 7B and 14B clear the low-risk bar only, the
-medium-risk bar remains out of reach at every scale tested, and the
-capability curve is flattening as it approaches it
-(Section~\ref{sec:scaling-bars}). This deployment class, meaning fully
-offline, quantised, commodity-hardware clinical QA, is not fit for clinical
-decision support beyond the lowest-risk stratum, and the honest output of
-the evaluation is the measured distance rather than a product. Publishing
-that distance is the responsible finding.
-
-\paragraph{Where the method is useful today.} The gating approach earns its
-keep wherever retrieval is the expensive or risky resource and the model's
-self-knowledge is exploitable: cost-aware routing in on-premises deployments
-under data-sovereignty constraints, edge devices where a metered or slow
-retrieval backend dominates cost, and any pipeline where the operator wants
-an auditable, per-query record of \emph{why} the system did or did not
-consult external evidence. The gate's decision payload of signals, votes and
-thresholds is logged per query, which makes the retrieval decision
-reviewable after the fact in a way end-to-end trained routers are not.
+\paragraph{Where the method is useful today.} Gating earns its keep wherever
+retrieval is the expensive or risky resource, which covers cost-aware routing
+in on-premises deployments under data-sovereignty constraints, edge devices
+where a metered or slow retrieval backend dominates cost, and any pipeline
+whose operator wants an auditable record of why the system did or did not
+consult external evidence. The gate's decision payload is logged on every
+query, which makes the retrieval decision reviewable after the fact in a way
+that end-to-end trained routers are not.
 
 \paragraph{Interpretability as the deployable asset.} The per-token entropy
-attribution (Section~\ref{sec:eval-attribution}) points at what may matter
-more than a small accuracy delta in regulated settings: surfacing
-\emph{where} the model was uncertain. The honest caveat travels with it:
-on this model, raw entropy highlights phrasing rather than clinical content,
-so attribution is a promising direction with a demonstrated limitation, not
-a finished feature. In a domain where automation bias is a documented harm
-(Chapter~\ref{ch:lsep}), an uncertainty display that clinicians can audit is
-plausibly worth more than two points of accuracy; building and validating
-one is future work.
+attribution of Section~\ref{sec:eval-attribution}, surfaced through the
+interface of Section~\ref{sec:impl-demo}, points at something that may matter
+more than a small accuracy delta in a regulated setting, which is showing
+where the model was uncertain. The caveat travels with it, since on this model
+raw entropy highlights phrasing rather than clinical content, so this is a
+promising direction with a demonstrated limitation rather than a finished
+feature. In a domain where automation bias is a documented harm
+(Chapter~\ref{ch:lsep}), an uncertainty display a clinician can audit is
+plausibly worth more than two points of accuracy.
