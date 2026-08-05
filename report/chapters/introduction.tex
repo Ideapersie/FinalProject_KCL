@@ -128,53 +128,33 @@ actually answer:
 \label{sec:intro-contributions}
 
 This dissertation makes seven contributions, each anchored to specific
-evidence:
+evidence and developed in the chapter named against it.
 
 \begin{enumerate}
-  \item \textbf{A training-free retrieval-gating ensemble.} Three signals,
-    namely mean token entropy, mean top-two logit margin, and a two-draft
-    hallucination probe, combined by majority vote, requiring no
-    fine-tuning, no labelled gate data, and no auxiliary model
-    (Chapter~\ref{ch:method}).
-  \item \textbf{Calibration non-transfer.} Literature-default thresholds
-    ($\tau_H = 2.5$ nats, $\tau_M = 0.3$) are shown to be \emph{physically
-    unreachable} on a 4-bit quantised 3B model, whose observed entropy spans
-    0.27--1.59 nats and margin 0.45--0.89. Gate thresholds must be
-    recalibrated per model; an offline replay procedure does so in seconds
+  \item \textbf{A training-free retrieval-gating ensemble} of mean token
+    entropy, mean top-two logit margin and a two-draft hallucination probe,
+    combined by majority vote and requiring no fine-tuning, no labelled gate
+    data and no auxiliary model (Chapter~\ref{ch:method}).
+  \item \textbf{Calibration non-transfer}, showing that literature-default
+    thresholds are physically unreachable on a 4-bit quantised model and that
+    an offline replay procedure recalibrates them in seconds
     (Section~\ref{sec:eval-calibration}).
-  \item \textbf{Retrieval as distraction.} On multiple-choice questions over a
-    426K-chunk medical corpus, retrieval breaks 46 previously-correct answers
-    and fixes 13 (net $-16.5$pp). Retrieved chunks are equally on-topic in
-    both groups but $2.4\times$ less answer-bearing where retrieval harms:
-    the failure mode is distraction by relevant-but-not-decisive context, not
-    retriever error (Section~\ref{sec:eval-distraction}).
-  \item \textbf{The protective skip.} On exactly those retrieval-poisoned
-    questions, the gate's \textsc{skip} decision scored 19/19 (100\%); its
-    \textsc{retrieve} decision, 3/27 (11\%). The gate is protective precisely
-    where retrieval is harmful (Section~\ref{sec:eval-protective}).
-  \item \textbf{The safety envelope.} A risk-stratified analysis quantifying
-    the \emph{distance} between this system and clinical acceptability: at
-    3B the best policy falls \gapToLowBar{}pp short of the \barLow{}
-    low-risk bar; at 7B and 14B the low-risk bar is cleared but the
-    \barMedium{} medium-risk bar is not. The contribution is an honest
-    measurement of that distance, not a claim of clinical readiness
-    (Sections~\ref{sec:eval-envelope} and~\ref{sec:scaling-bars}).
-  \item \textbf{A three-model scaling study.} The full pipeline replicated
-    on Qwen2.5-7B and Qwen2.5-14B at identical quantisation, corpus and
-    questions. Scale raises closed-book accuracy and then plateaus
-    (\accPthreeMcq{} $\rightarrow$ \accQwenPthreeMcq{} $\rightarrow$
-    \accQwenFourteenPthreeMcq{}); calibration non-transfer recurs
-    prospectively at every scale; retrieval-as-distraction \emph{grows} with
-    capability (\breakLlama{}, \breakQwenSeven{}, \breakQwenFourteen{}
-    broken answers); and at 14B the gated policy's advantage over
-    always-retrieve is statistically significant for the first time
-    (\diffFourteenPfivePone{}pp, 95\% CI \diffFourteenPfivePoneCI{})
-    (Chapter~\ref{ch:scaling}).
-  \item \textbf{A reproducible evaluation harness.} Every reported number is
-    generated from raw run logs into \LaTeX{} macros, guarded by a regression
-    test that fails the build on a hand-edited literal; 240 unit tests run
-    without the model via a mock backend; runs are resumable and
-    deterministic (Chapter~\ref{ch:impl}).
+  \item \textbf{Retrieval as distraction}, isolating relevant-but-not-decisive
+    context rather than retriever error as the failure mode that breaks
+    correct answers (Section~\ref{sec:eval-distraction}).
+  \item \textbf{The protective skip}, showing the gate is protective precisely
+    on the questions where retrieval is harmful
+    (Section~\ref{sec:eval-protective}).
+  \item \textbf{The safety envelope}, a risk-stratified measurement of the
+    distance between this system and clinical acceptability rather than a
+    claim of readiness (Sections~\ref{sec:eval-envelope}
+    and~\ref{sec:scaling-bars}).
+  \item \textbf{A three-model scaling study} at 3B, 7B and 14B on identical
+    corpus, questions and code, establishing which findings are properties of
+    the method rather than of one model (Chapter~\ref{ch:scaling}).
+  \item \textbf{A reproducible evaluation harness} in which every reported
+    number is generated from raw logs under a drift-guard test and 240 tests
+    run without the model (Chapter~\ref{ch:impl}).
 \end{enumerate}
 
 \section{Dissertation Structure}
@@ -183,17 +163,10 @@ evidence:
 Chapter~\ref{ch:background} situates the work among adaptive-retrieval
 methods, medical RAG benchmarks and the uncertainty-signal literature, and
 states the four-part gap this project occupies. Chapter~\ref{ch:method}
-presents the system design: the policy space, the retrieval stack, and the
-three-gate ensemble with its hardware-aware degradation.
-Chapter~\ref{ch:impl} documents the implementation, with particular attention
-to the reproducibility machinery. Chapter~\ref{ch:eval} reports the
-single-model evaluation: the main policy comparison, the calibration study,
-the distraction and protective-skip analyses, the gate ablation, token-level
-entropy attribution, and the safety envelope. Chapter~\ref{ch:scaling}
-replicates the pipeline at 7B and 14B and reads the three models as a
-scaling curve: what rises, what plateaus, what inverts, and what it means
-that the medium-risk bar stays out of reach. Chapter~\ref{ch:discussion}
-synthesises the findings and confronts their limitations.
-Chapter~\ref{ch:lsep} addresses the legal, social, ethical and professional
-dimensions of deploying (or declining to deploy) such a system.
-Chapter~\ref{ch:conclusion} concludes and orders the future work by value.
+presents the system design and Chapter~\ref{ch:impl} the implementation.
+Chapter~\ref{ch:eval} reports the single-model evaluation,
+Chapter~\ref{ch:scaling} replicates it at 7B and 14B, and
+Chapter~\ref{ch:discussion} synthesises the findings and confronts their
+limitations. Chapter~\ref{ch:lsep} addresses the legal, social, ethical and
+professional dimensions of the work, and Chapter~\ref{ch:conclusion}
+concludes.

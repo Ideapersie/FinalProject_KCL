@@ -154,20 +154,17 @@ scaling study finds they are \emph{task}-specific as well
 \section{Efficiency and Constrained Deployment}
 \label{sec:bg-efficiency}
 
-The deployment gap that motivates this work is well documented. The ITU's
-most recent connectivity figures put 2.2 billion people offline, with
-Internet use at 23\% of the population in low-income countries and 14\%
-among their rural residents \citep{itu2025factsfigures}; 666 million people
-lack electricity altogether \citep{sdg7tracking2025}. Clinical
-decision-support research aimed at these settings has begun to treat
-offline-first operation as a hard requirement rather than a degraded mode:
-\citet{walusimbi2026aletheia} build an on-device diagnostic-support system
-for sub-Saharan African district hospitals on precisely the grounds argued
-in Chapter~\ref{ch:intro}, that connectivity-dependent tools are
-structurally unavailable where physician-to-patient ratios are worst. That
-line of work concentrates on diagnosis; the question of when such a system
-should consult an external corpus, this project's subject, is to the
-author's knowledge unexamined in the offline-clinical setting.
+The connectivity and electrification figures behind this work were given in
+Chapter~\ref{ch:intro} \citep{itu2025factsfigures, sdg7tracking2025}, and
+clinical decision-support research aimed at those settings has begun to treat
+offline-first operation as a hard requirement rather than a degraded mode.
+\citet{walusimbi2026aletheia} build an on-device diagnostic-support system for
+sub-Saharan African district hospitals on exactly those grounds, that
+connectivity-dependent tools are structurally unavailable where
+physician-to-patient ratios are worst. That line of work concentrates on
+diagnosis, and the question of when such a system should consult an external
+corpus is to the author's knowledge unexamined in the offline-clinical
+setting.
 
 Within that envelope, the energy cost of neural inference is a first-order
 concern, not a footnote \citep{strubell2019}; per-query energy measurement
