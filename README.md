@@ -214,7 +214,7 @@ python scripts/analyse_chunk_relevance.py  # distraction study
 python -m pytest -q
 ```
 
-227 tests, ~95 seconds, **no model or dataset download required** — a mock backend
+240 tests, ~95 seconds, **no model or dataset download required** — a mock backend
 supplies deterministic text and synthetic logit distributions. Coverage spans
 configuration merging, retrieval ranking and index round-trips, every gate's
 threshold and abstain behaviour, ensemble voting and degraded-mode fallback,
@@ -240,14 +240,44 @@ Chapters are in `report/chapters/`; generated tables and figures are pulled in f
 ## 8. Demo interface
 
 ```bash
-python scripts/run_demo.py --model models/Llama-3.2-3B-Instruct-Q4_K_M.gguf
+python scripts/run_demo.py
 ```
 
 A Gradio interface that answers a question under both the gated policy and
-closed-book, showing what retrieval bought: the gate's decision and per-member
-votes, a draft-token entropy heatmap, and term highlighting over retrieved chunks.
-Requires the indexes for the retrieval path; without them, use
-`data/corpora/pilot_corpus.jsonl` for a smoke test.
+closed-book, showing what retrieval bought: the gate's decision with every
+member's signal, threshold and vote, a draft-token entropy heatmap, and term
+highlighting over retrieved chunks. Four preset questions — two the logged run
+skipped, two it retrieved on — sit under the Run button.
+
+Answers appear as three columns, P5 against P3 against the correct answer, over
+a strip that is green only when **both** policies picked the gold letter, amber
+when they split, and red when both missed. Two identical wrong answers are not
+scored as agreement. The gold letter is optional: leave it blank and nothing is
+scored, because a live demo has no ground truth unless it is supplied.
+
+The model path, `indexes/bm25_medcorp_tp.pkl` and `indexes/faiss_medcorp_tp` are
+all defaulted, so no flags are needed; `--model`, `--bm25-index` and
+`--faiss-index` override them. Without the indexes the gate still runs and the
+SKIP path still answers, but RETRIEVE reports the load error instead of evidence.
+
+The demo runs at `--threads 12 --n-batch 512 --max-new-tokens 64`, well above the
+`hardware_medium` evaluation tier the reported latencies were measured on. None
+of the three affects a gate signal — the draft is greedy and its length is fixed
+by `gate.draft_max_tokens` — so the verdicts match the logged run. Measured on
+the 16-core development laptop, against the ~154 s median of the logged
+evaluation run:
+
+| stage | time |
+|---|---|
+| startup (model + both indexes + warm-up) | ~9 s |
+| a question the gate skips | ~21 s |
+| a question the gate retrieves on | ~60-95 s |
+
+The retrieval path is slower because it adds the FAISS and BM25 lookups and then
+answers over five retrieved chunks. Lowering **top-k** in Settings shortens that
+prompt; it is left at the 5 the reported runs used.
+
+Screenshots of all three panels are in `results/figures/demo/`.
 
 ---
 
@@ -257,7 +287,7 @@ Requires the indexes for the retrieval path; without them, use
 src/medrag_adaptive/    package: config, retrieval, gating, policies, evaluation
 configs/                layered YAML — base, hardware tiers, models, policies, experiments
 scripts/                data prep, corpus/index builds, experiment runner, analyses
-tests/                  227 model-free unit, integration and regression tests
+tests/                  240 model-free unit, integration and regression tests
 results/raw_logs/       the experimental record (input to every reported number)
 results/tables/         generated LaTeX tables + numbers.tex macros
 results/figures/        generated figures (PDF + PNG)
