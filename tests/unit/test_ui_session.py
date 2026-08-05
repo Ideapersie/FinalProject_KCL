@@ -54,6 +54,27 @@ def test_entropy_gate_requests_tokens_for_the_ui():
     assert result.aligned.dropped_entropies > 0
 
 
+def test_gold_letter_scores_both_policies():
+    """MockLLMBackend always answers "A", so gold A is right and gold B is wrong."""
+    session = DemoSession(_cfg(), MockLLMBackend(confidence="high"), MockRetriever())
+    right = session.answer("q", choices={"A": "one", "B": "two"}, gold="A")
+    assert right.gold_letter == "A"
+    assert right.gold_text == "one"
+    assert right.p5_correct is True and right.p3_correct is True
+
+    wrong = session.answer("q", choices={"A": "one", "B": "two"}, gold="b")
+    assert wrong.gold_letter == "B"
+    assert wrong.p5_correct is False and wrong.p3_correct is False
+
+
+def test_without_a_gold_letter_nothing_is_scored():
+    """A live demo has no ground truth unless it is typed in."""
+    session = DemoSession(_cfg(), MockLLMBackend(confidence="high"), MockRetriever())
+    result = session.answer("q", choices={"A": "one"})
+    assert result.gold_letter is None
+    assert result.p5_correct is None and result.p3_correct is None
+
+
 def test_choices_produce_an_mcq_question():
     session = DemoSession(_cfg(), MockLLMBackend(confidence="high"), MockRetriever())
     result = session.answer("q", choices={"A": "one", "B": "two"})

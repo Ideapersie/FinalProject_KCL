@@ -207,7 +207,7 @@ def tab_main_results() -> None:
   \\caption{{All policies on the real MedCorp corpus (425{{,}}847 chunks), quantised
   Llama-3.2-3B. Multiple-choice is scored by accuracy; open-ended by mean token-F1
   (binary accuracy is not defined for open-ended answers -- see
-  Section~\\ref{{sec:eval-ablation}}). $^{{\\dagger}}$P3 never retrieves, so its result is
+  Section~\\ref{{sec:impl-harness}}). $^{{\\dagger}}$P3 never retrieves, so its result is
   corpus-independent; it is a paired run over the identical question set.}}
   \\label{{tab:main-results}}
 \\end{{table}}

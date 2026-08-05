@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional
 
 from medrag_adaptive.config import ProjectConfig
 from medrag_adaptive.data.schema import Chunk, UnifiedQuestion
+from medrag_adaptive.evaluation.scoring import extract_letter, score_mcq
 from medrag_adaptive.gating.base import Gate
 from medrag_adaptive.gating.ensemble_gate import EnsembleGate
 from medrag_adaptive.gating.entropy_gate import EntropyGate
@@ -46,6 +47,15 @@ class DemoResult:
     query: str
     latency_s: float
     notes: List[str] = field(default_factory=list)
+    # Scoring against a gold letter, when the asker supplied one. All None for a
+    # free-text question or an unlabelled one — a live demo has no ground truth
+    # unless it is typed in, and the UI must not imply otherwise.
+    gold_letter: Optional[str] = None
+    gold_text: Optional[str] = None
+    p5_letter: Optional[str] = None
+    p3_letter: Optional[str] = None
+    p5_correct: Optional[bool] = None
+    p3_correct: Optional[bool] = None
 
 
 class _TopKRetriever(Retriever):
@@ -130,6 +140,7 @@ class DemoSession:
         entropy_threshold: Optional[float] = None,
         margin_threshold: Optional[float] = None,
         top_k: Optional[int] = None,
+        gold: Optional[str] = None,
     ) -> DemoResult:
         if self.llm is None:
             raise ValueError(
@@ -193,7 +204,24 @@ class DemoSession:
 
         aligned = align_draft(ent.get("draft_tokens"), ent.get("per_token_entropy"))
 
+        # Scored with the evaluation harness's own extractor, so "correct" in the
+        # UI means what "correct" means in every reported table.
+        gold_letter = (gold or "").strip().upper()[:1] or None
+        p5_letter = p3_letter = None
+        p5_correct = p3_correct = None
+        if gold_letter:
+            p5_letter = extract_letter(p5.answer_text)
+            p3_letter = extract_letter(p3.answer_text)
+            p5_correct = score_mcq(p5.answer_text, gold_letter)[0]
+            p3_correct = score_mcq(p3.answer_text, gold_letter)[0]
+
         return DemoResult(
+            gold_letter=gold_letter,
+            gold_text=(choices or {}).get(gold_letter) if gold_letter else None,
+            p5_letter=p5_letter,
+            p3_letter=p3_letter,
+            p5_correct=p5_correct,
+            p3_correct=p3_correct,
             verdict="RETRIEVE" if p5.retrieval_triggered else "SKIP",
             gate_name=p5.gate_name or cfg.gate.type,
             signal_value=p5.gate_signal_value,

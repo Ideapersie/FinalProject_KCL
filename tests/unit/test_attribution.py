@@ -13,10 +13,28 @@ from medrag_adaptive.data.schema import Chunk
 from medrag_adaptive.ui.attribution import (
     align_draft,
     highlight_terms,
+    render_agreement_html,
     render_chunks_html,
     render_entropy_html,
+    render_gate_table_html,
     truncated_entropy,
 )
+
+# Shape copied from a real logged ensemble payload (results/raw_logs/
+# p5_medcorp_mcq.jsonl, qvault.gate_details) so the renderer is tested against
+# the keys the gates actually emit rather than keys invented for the test.
+ENSEMBLE_DETAILS = {
+    "votes": {"entropy": "retrieve", "margin": "skip", "hallucination_probe": "skip"},
+    "retrieve_votes": 1,
+    "min_votes": 2,
+    "members": {
+        "entropy": {"available": True, "mean_entropy": 0.734, "threshold": 0.7,
+                    "per_token_entropy": [0.5, 0.9]},
+        "margin": {"available": True, "mean_margin": 0.740, "threshold": 0.7},
+        "hallucination_probe": {"available": True, "agreement": True,
+                                "mode": "letter_match"},
+    },
+}
 
 
 # ── alignment ──────────────────────────────────────────────────────
@@ -127,6 +145,89 @@ def test_render_chunks_warns_when_retrieval_was_not_purely_lexical():
 
 def test_render_chunks_empty_list():
     assert "No chunks retrieved" in render_chunks_html([], "q", lexical_only=False)
+
+
+# ── gate signal table ──────────────────────────────────────────────
+
+def test_gate_table_lists_every_member_with_its_signal_and_vote():
+    out = render_gate_table_html(ENSEMBLE_DETAILS, "ensemble")
+    for name in ("entropy", "margin", "hallucination_probe"):
+        assert name in out
+    assert "0.734" in out and "0.740" in out
+    assert "retrieve" in out and "skip" in out
+
+
+def test_gate_table_shows_each_rule_direction():
+    """The two thresholds fire in opposite directions; the table must say which."""
+    out = render_gate_table_html(ENSEMBLE_DETAILS, "ensemble")
+    assert "retrieve if &gt; 0.700" in out
+    assert "retrieve if &lt; 0.700" in out
+
+
+def test_gate_table_probe_has_no_threshold():
+    out = render_gate_table_html(ENSEMBLE_DETAILS, "ensemble")
+    assert "retrieve if they disagree" in out
+
+
+def test_gate_table_marks_an_abstaining_member():
+    """An API backend cannot supply full-vocabulary logits; entropy abstains."""
+    details = {
+        "votes": {"margin": "skip"},
+        "members": {
+            "entropy": {"available": False},
+            "margin": {"available": True, "mean_margin": 0.8, "threshold": 0.7},
+        },
+    }
+    out = render_gate_table_html(details, "ensemble")
+    assert "abstained" in out
+
+
+def test_gate_table_single_gate_uses_the_payload_itself():
+    """A non-ensemble run has no `members` key — the details ARE the member."""
+    out = render_gate_table_html(
+        {"available": True, "mean_entropy": 0.42, "threshold": 0.7}, "entropy"
+    )
+    assert "0.420" in out
+    assert "margin" not in out
+
+
+# ── answer agreement strip ─────────────────────────────────────────
+
+def test_agreement_is_green_only_when_both_policies_are_right():
+    out = render_agreement_html("C", "C", "C", True, True)
+    assert "mr-agree-good" in out
+    assert "both correct" in out
+
+
+def test_agreement_is_not_green_when_both_agree_but_are_wrong():
+    """Two identical wrong answers is the failure mode, not a success."""
+    out = render_agreement_html("A", "A", "C", False, False)
+    assert "mr-agree-good" not in out
+    assert "mr-agree-bad" in out
+    assert "both wrong" in out
+
+
+def test_agreement_names_which_policy_was_right_when_they_split():
+    gated = render_agreement_html("C", "A", "C", True, False)
+    assert "mr-agree-split" in gated
+    assert "only the gated policy is correct" in gated
+
+    closed = render_agreement_html("A", "C", "C", False, True)
+    assert "only closed-book is correct" in closed
+
+
+def test_agreement_without_a_gold_letter_renders_nothing():
+    assert render_agreement_html("C", "C", None, None, None) == ""
+
+
+def test_agreement_shows_a_placeholder_when_no_letter_was_extracted():
+    out = render_agreement_html(None, "C", "C", False, True)
+    assert "P5 ?" in out
+
+
+def test_gate_table_of_empty_details_renders_nothing():
+    assert render_gate_table_html({}, "entropy") == ""
+    assert render_gate_table_html({"available": True}, "hybrid_unknown_gate") == ""
 
 
 # ── truncated top-k entropy ────────────────────────────────────────

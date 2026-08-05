@@ -134,6 +134,123 @@ def render_entropy_html(
 
 
 # ─────────────────────────────────────────────────────────────────
+# Gate signal table
+# ─────────────────────────────────────────────────────────────────
+
+# What each gate measures and the direction of its firing rule. The probe has
+# no threshold at all — it fires on disagreement between two drafts — so it
+# carries None and the renderer prints a rule instead of a number.
+_GATE_ROWS = {
+    "entropy": ("H̄ (nats)", "mean_entropy", "threshold", "retrieve if >"),
+    "margin": ("M̄ (p1−p2)", "mean_margin", "threshold", "retrieve if <"),
+    "hallucination_probe": ("drafts agree", "agreement", None, "retrieve if they disagree"),
+}
+
+
+def _format_signal(name: str, member: Dict) -> str:
+    if name == "hallucination_probe":
+        agree = member.get("agreement")
+        return "—" if agree is None else ("yes" if agree else "no")
+    value = member.get(_GATE_ROWS[name][1])
+    return "—" if value is None else f"{float(value):.3f}"
+
+
+def render_gate_table_html(gate_details: Dict, gate_name: Optional[str]) -> str:
+    """
+    Render every gate member's signal, threshold and vote as one small table.
+
+    The ensemble is the project's headline gate, and a single fired-signal
+    number in the banner hides the thing that makes it interesting: which
+    members disagreed. All of it is already in gate_details — this only lays it
+    out. Single-gate runs have no `members` key and get one row.
+    """
+    if not gate_details:
+        return ""
+
+    votes = gate_details.get("votes") or {}
+    members = gate_details.get("members")
+    if not members:
+        # Single gate: the details payload IS the member payload.
+        if gate_name not in _GATE_ROWS:
+            return ""
+        members = {gate_name: gate_details}
+
+    rows = []
+    for name, member in members.items():
+        if name not in _GATE_ROWS:
+            continue
+        label, _, threshold_key, rule = _GATE_ROWS[name]
+        threshold = member.get(threshold_key) if threshold_key else None
+        threshold_cell = rule if threshold is None else f"{rule} {float(threshold):.3f}"
+        if not member.get("available", True):
+            signal_cell, vote_cell = "abstained", "—"
+        else:
+            signal_cell = _format_signal(name, member)
+            vote_cell = votes.get(name, "—")
+        css = "mr-vote-retrieve" if vote_cell == "retrieve" else "mr-vote-skip"
+        rows.append(
+            f"<tr><td>{html.escape(name)}</td><td>{html.escape(label)}</td>"
+            f"<td>{html.escape(signal_cell)}</td>"
+            f"<td>{html.escape(threshold_cell)}</td>"
+            f'<td class="{css}">{html.escape(str(vote_cell))}</td></tr>'
+        )
+
+    if not rows:
+        return ""
+    return (
+        '<table class="mr-gates"><thead><tr><th>gate</th><th>signal</th>'
+        "<th>value</th><th>rule</th><th>vote</th></tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody></table>"
+    )
+
+
+# ─────────────────────────────────────────────────────────────────
+# Answer agreement strip
+# ─────────────────────────────────────────────────────────────────
+
+def render_agreement_html(
+    p5_letter: Optional[str],
+    p3_letter: Optional[str],
+    gold_letter: Optional[str],
+    p5_correct: Optional[bool],
+    p3_correct: Optional[bool],
+) -> str:
+    """
+    One line saying whether the two policies agreed and whether they were right.
+
+    Green only when both policies picked the gold letter. A demo that colours
+    "the two policies agree" green would show green for two identical wrong
+    answers, which is the failure this project is about.
+    """
+    if not gold_letter:
+        return ""
+
+    def _chip(label: str, letter: Optional[str], correct: Optional[bool]) -> str:
+        shown = letter or "?"
+        css = "mr-chip-good" if correct else "mr-chip-bad"
+        return (f'<span class="mr-chip {css}">{html.escape(label)} '
+                f"{html.escape(shown)}</span>")
+
+    both_right = bool(p5_correct) and bool(p3_correct)
+    if both_right:
+        verdict, css = "both correct", "mr-agree-good"
+    elif p5_correct:
+        verdict, css = "only the gated policy is correct", "mr-agree-split"
+    elif p3_correct:
+        verdict, css = "only closed-book is correct", "mr-agree-split"
+    else:
+        verdict, css = "both wrong", "mr-agree-bad"
+
+    return (
+        f'<div class="mr-agree {css}">'
+        + _chip("P5", p5_letter, p5_correct)
+        + _chip("P3", p3_letter, p3_correct)
+        + f'<span class="mr-chip mr-chip-gold">gold {html.escape(gold_letter)}</span>'
+        + f"<span>{verdict}</span></div>"
+    )
+
+
+# ─────────────────────────────────────────────────────────────────
 # Retrieval term highlighting
 # ─────────────────────────────────────────────────────────────────
 
