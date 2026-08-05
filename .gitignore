@@ -213,10 +213,17 @@ __marimo__/
 /models/
 indexes/
 data/raw/
-results/raw_logs/
 *.gguf
 data/corpora/
 mirage/
+
+# results/raw_logs/ is deliberately NOT ignored. Everything above can be
+# re-downloaded or rebuilt from public sources; the run logs cannot — they are
+# the experimental record, and every number, table and figure in the report is
+# generated from them (scripts/generate_tables.py, generate_figures.py) and
+# checked against them by tests/regression/test_no_number_drift.py. At ~14 MB of
+# JSONL they are small enough to version, and without them a fresh clone can
+# neither reproduce nor verify any reported result.
 
 # Crash dumps
 *.stackdump

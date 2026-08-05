@@ -1,0 +1,27 @@
+# p5_gated_qwen_open.yaml - OPEN-ENDED thresholds for configs/models/qwen7b.yaml.
+#
+# Fitted on 40 stride-sampled PubMedQA questions by targeting a
+# 50% per-gate retrieval budget, matching the MCQ target.
+#
+# These differ from the MCQ thresholds because open-ended drafts are long
+# free text and MCQ drafts are a single letter: the signal distributions do
+# not coincide. Reusing the MCQ tau here made every gate fire on every
+# question (ensemble 100%), collapsing P5 into P1.
+#
+# The probe f1_threshold IS refit here. Holding it constant across MODELS
+# keeps the probe comparable as scale changes; holding it constant across
+# TASK TYPES is what caused the saturation.
+policy:
+  name: p5_gated
+  description: Training-free gating, 3-gate ensemble (entropy + margin + hallucination
+    probe), majority vote.
+  retrieval_mode: hybrid
+  cite_sources: false
+gate:
+  type: ensemble
+  entropy_threshold: 0.568
+  margin_threshold: 0.752
+  draft_max_tokens: 48
+  hallucination_probe:
+    f1_threshold: 0.538
+    agreement_mode: f1_threshold

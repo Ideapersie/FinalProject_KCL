@@ -1,0 +1,20 @@
+policy:
+  name: p5_gated
+  description: "Training-free gating, 3-gate ensemble (entropy + margin + hallucination probe), majority vote."
+  retrieval_mode: hybrid
+  cite_sources: false
+
+# Canonical P5 config. gate.type=ensemble inherits ensemble_members /
+# ensemble_min_votes / thresholds from base.yaml. The low tier overrides
+# gate.type to hallucination_probe (probe-only) via hardware_low.yaml.
+gate:
+  type: ensemble
+  # Calibrated via scripts/run_threshold_sweep.py (offline replay of logged gate
+  # signals). The original 2.5 / 0.3 defaults were impossible for this quantized
+  # 3B model: observed entropy maxes at ~1.86 nats (< 2.5) and margin bottoms at
+  # ~0.40 (> 0.3), so neither gate ever fired and P5 retrieved 0%. A single global
+  # operating point τ_H=0.70, τ_M=0.70 puts both question types in a sensible band
+  # (MCQ ≈52%, open-ended ≈81% ensemble retrieval), without per-dataset tuning.
+  entropy_threshold: 0.25       # nats; retrieve if mean token entropy > τ_H
+  margin_threshold: 0.861        # prob gap; retrieve if mean top1-top2 margin < τ_M
+  draft_max_tokens: 48
