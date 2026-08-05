@@ -107,7 +107,7 @@ at load time via the canonical loader (\texttt{evaluation/loading.py}).
 \section{Test Inventory}
 \label{app:tests}
 
-227 tests pass at the time of writing (\texttt{pytest -q}, 95\,s, no model
+240 tests pass at the time of writing (\texttt{pytest -q}, 95\,s, no model
 required), spanning unit (configuration, retrieval, gates, policies, scoring, metrics),
 integration (open-ended path end-to-end), and regression suites (number
 drift guard; P3 paired-run corpus independence). The suite runs without the
@@ -116,6 +116,32 @@ model or any dataset download via \texttt{MockLLMBackend}:
 \begin{lstlisting}[language=bash]
 python -m pytest -q          # full suite, ~seconds, no model required
 \end{lstlisting}
+
+\section{Demonstration Interface Screens}
+\label{app:demo}
+
+Both gate outcomes, captured on the 3B model with the full MedCorp indexes
+(Section~\ref{sec:impl-demo}). Startup takes about nine seconds; a skipped
+question answers in roughly twenty, a retrieved one in sixty to ninety-five.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\linewidth]{results/figures/demo/demo_skip.jpg}
+  \caption{A skipped question. No member votes to retrieve
+    ($\bar{H}=0.631<\tau_H$, $\bar{M}=0.800>\tau_M$, the probe's two drafts
+    agree), both policies answer C, and the strip is green because both are
+    correct. The signals reproduce the logged run exactly.}
+  \label{fig:demo-skip}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\linewidth]{results/figures/demo/demo_retrieve.jpg}
+  \caption{The same interface on a retrieved question: a unanimous 3/3 vote,
+    and the draft-token heat map showing where the uncertainty that triggered
+    it was concentrated.}
+  \label{fig:demo-retrieve}
+\end{figure}
 
 \section{Corpus and Index Parameters}
 \label{app:corpus}

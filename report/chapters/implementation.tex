@@ -158,13 +158,40 @@ reported for open-ended questions: thresholding $F_1$ at zero yields
 $\sim$98\% ``accuracy'' and measures nothing; mean $F_1$ is the reported
 metric.
 
+\section{Demonstration Interface}
+\label{sec:impl-demo}
+% [DEMO] scripts/run_demo.py + src/medrag_adaptive/ui/ — screenshots in
+% results/figures/demo/, captured 5 August 2026 on the 3B model.
+
+A local browser interface runs one question through the gated policy and the
+closed-book baseline and displays the gate's reasoning
+(Figure~\ref{fig:demo-split}). It calls the same policy and gate factories as
+the evaluation harness rather than reimplementing them, so what it shows is
+the decision the harness would log, and it is scored by the same MCQ letter
+extractor. Every gate member's signal, its firing rule and its vote are listed
+individually, which makes visible what a single ensemble verdict hides:
+members frequently disagree. Answers are only marked as agreeing when both
+policies are \emph{correct}, since two identical wrong answers are the failure
+this work studies, not a success.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{results/figures/demo/demo_split_verdict.jpg}
+  \caption{The interface on a question where the gate changes the outcome. All
+    three ensemble members vote to retrieve; the retrieved passages describe
+    the spheno-occipital synchondrosis, and the gated policy answers B (gold)
+    where closed-book answers D. The strip below the answers is amber rather
+    than green precisely because the two policies disagree.}
+  \label{fig:demo-split}
+\end{figure}
+
 \section{Reproducibility and Verification}
 \label{sec:impl-verification}
 
 The project treats reproducibility as a first-class deliverable, and this
 section documents the machinery rather than asserting the virtue.
 
-\paragraph{A model-free test suite.} 227 unit and integration tests pass at
+\paragraph{A model-free test suite.} 240 unit and integration tests pass at
 the time of writing, executing without the multi-gigabyte model via the mock
 backend's deterministic text and synthetic logit distributions (peaked and
 uniform variants exercise both gate decisions).
