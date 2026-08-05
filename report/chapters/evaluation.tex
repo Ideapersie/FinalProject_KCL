@@ -28,12 +28,11 @@ retrieval corpus is the 425,847-chunk medical corpus of
 Section~\ref{sec:impl-corpus}. Secondary metrics are retrieval rate, mean
 per-query latency, and estimated energy.
 
-The sample size must be conceded at the outset: $n=\nQuestions{}$ per
-condition is small, and its cost is visible in the confidence intervals of
-Section~\ref{sec:eval-main}. Where a result is a \emph{count} over the
-sample (retrieval rate) it is exact for that sample; where it is an
-\emph{estimate} of a population difference (accuracy gaps) the interval is
-reported and taken seriously.
+The sample size is conceded at the outset, since $n=\nQuestions{}$ per
+condition is small and its cost is visible in the confidence intervals below.
+A result that is a count over the sample, such as retrieval rate, is exact for
+that sample, whereas an estimate of a population difference carries an
+interval that is reported and taken seriously.
 
 \section{Main Comparison}
 \label{sec:eval-main}
@@ -138,17 +137,15 @@ On the 200-chunk pilot corpus, always-retrieve P1 scored 17\%
 and \emph{calibrated} P5 dropped from \accPthreeMcq{} (when its gate never
 fired) to 45.5\% (once it began retrieving at 50\%).
 % [FROZEN] pilot calibrated-P5 result
-The gate was functioning exactly as designed, firing at the calibrated
-rate, yet firing made the policy worse, because the corpus contained
-almost nothing worth retrieving. The general principle, and the cleanest
-lesson in this dissertation: \textbf{gated retrieval inherits the quality of
-the corpus it retrieves from.} A gate cannot rescue retrieval from an empty
-well; on a poor corpus the safest gate is one that retrieves less.
-
-Replacing the pilot with the real corpus lifted P1 from 17\% to
-\accPoneMcq{} (Figure~\ref{fig:corpus-effect}), retrospectively confirming
-the diagnosis: the earlier collapse was a property of the corpus, not of the
-gating machinery.
+The gate was functioning exactly as designed and firing at its calibrated
+rate, yet firing made the policy worse because the corpus contained almost
+nothing worth retrieving. The general principle is that \textbf{gated
+retrieval inherits the quality of the corpus it retrieves from}, so on a poor
+corpus the safest gate is one that retrieves less. Replacing the pilot with
+the real corpus lifted P1 from 17\% to \accPoneMcq{}
+(Figure~\ref{fig:corpus-effect}), which retrospectively confirms that the
+earlier collapse was a property of the corpus rather than of the gating
+machinery.
 
 \section{Retrieval as Distraction}
 \label{sec:eval-distraction}
@@ -392,15 +389,7 @@ to four, an estimated $\sim$20\% latency saving) and evaluating a probe-free
 logit-only configuration are the obvious optimisations, quantified as future
 work (Section~\ref{sec:conc-future}).
 
-\section{From One Model to Three}
-\label{sec:eval-crossmodel}
-
 Every analysis in this chapter used the 3B reference model, and several of
-its findings are claims about the \emph{method} rather than about that
-model: that thresholds must be calibrated per model, that retrieval
-distracts, that selective retrieval beats always-retrieve. A method claim
-supported by one instance is an anecdote. Which of these findings survive,
-and which turn out to be artefacts of a small model, is the question
-Chapter~\ref{ch:scaling} answers, by replicating the pipeline unchanged
-(same corpus, same questions, same policy code, same quantisation) at 7B
-and 14B.
+its findings are claims about the method rather than about that model.
+Chapter~\ref{ch:scaling} tests which of them survive by replicating the
+pipeline unchanged at 7B and 14B.

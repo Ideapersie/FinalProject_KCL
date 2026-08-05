@@ -10,19 +10,17 @@
 \section{Design Overview}
 \label{sec:method-overview}
 
-The system is organised as a six-layer pipeline: configuration, data
-contracts, data ingestion, models and retrieval, policies and gating, and
-evaluation. One design principle governs the whole structure: \emph{each
+The system is organised as a six-layer pipeline covering configuration, data
+contracts, ingestion, models and retrieval, policies and gating, and
+evaluation, and one principle governs the whole structure, which is that each
 layer depends only on the layers beneath it and communicates exclusively
-through shared, typed dataclasses} (Figure~\ref{fig:architecture}). The
-practical consequence is that every
-component can be unit-tested in isolation against mock collaborators, and the
-retrieval gates, which are the core novel contribution, were developed against a
-stable, test-covered substrate rather than a moving target. The same
-discipline is what later makes the evaluation trustworthy: because every
-policy emits an identical, fully populated record per query, analyses such as
-the paired retrieval-distraction study (Section~\ref{sec:eval-distraction})
-can be run entirely from logs, without re-invoking the model.
+through shared typed dataclasses (Figure~\ref{fig:architecture}). Every
+component can therefore be unit-tested in isolation against mock
+collaborators, and the retrieval gates were developed against a stable
+test-covered substrate rather than a moving target. The same discipline is
+what makes the evaluation trustworthy, because every policy emits an
+identical fully populated record per query, so analyses such as the paired
+retrieval-distraction study can be run entirely from logs.
 
 \begin{figure}[t]
   \centering
@@ -140,48 +138,42 @@ A single uncertainty signal is fragile, because each of the signal families
 surveyed in Section~\ref{sec:bg-calibration} carries a characteristic
 failure mode under which it would gate incorrectly.
 
-\emph{Token entropy} is inflated by benign lexical freedom: probability
-mass spreads wherever multiple phrasings are equally acceptable, such as
-formatting tokens, function words and punctuation, regardless of whether
-the underlying \emph{fact} is certain. A model that knows the answer but
-has many ways to phrase it looks uncertain to an entropy gate. This is not
-hypothetical: the token-level attribution analysis of
-Section~\ref{sec:eval-attribution} demonstrates exactly this failure on
-real clinical text, with entropy concentrating on filler tokens while the
-clinically decisive tokens are generated at near-certainty.
+\emph{Token entropy} is inflated by benign lexical freedom, because
+probability mass spreads wherever multiple phrasings are equally acceptable,
+such as formatting tokens, function words and punctuation, regardless of
+whether the underlying fact is certain. A model that knows the answer but has
+many ways to phrase it therefore looks uncertain to an entropy gate, and the
+token-level attribution of Section~\ref{sec:eval-attribution} demonstrates
+exactly this failure on real clinical text.
 
-\emph{Logit margin} fails in the opposite direction: its failure mode is
-confident error. A model that has internalised a wrong fact produces a
-large margin on a wrong answer, and the gate reads certainty. Margin
-measures decisiveness, not correctness.
+\emph{Logit margin} fails in the opposite direction, since its failure mode is
+confident error. A model that has internalised a wrong fact produces a large
+margin on a wrong answer and the gate reads certainty, because margin measures
+decisiveness rather than correctness.
 
-\emph{Verbalized confidence}, meaning asking the model to rate its own
-answer, is the standard third option, but \citet{kadavath2022} show
-self-assessment calibration degrades with model size, and self-reports from
-a 3B model are close to uninformative. This project therefore
-\emph{replaces} verbalized confidence with a stability test in the spirit
-of self-consistency \citep{wang2023selfconsistency}: generate two drafts
-under different prompt framings and measure their agreement. Genuinely held
-knowledge is invariant to surface framing; a guess is not. Reduced from
+\emph{Verbalized confidence}, meaning asking the model to rate its own answer,
+is the standard third option, but \citet{kadavath2022} show that
+self-assessment calibration degrades with model size, so self-reports from a
+3B model are close to uninformative. This project therefore replaces it with a
+stability test in the spirit of self-consistency
+\citep{wang2023selfconsistency}, generating two drafts under different prompt
+framings and measuring their agreement, on the reasoning that genuinely held
+knowledge is invariant to surface framing while a guess is not. Reduced from
 many-sample majority voting to a two-draft agreement test, the idea becomes
 cheap enough to run per query on CPU.
 
-The design response to these three failure modes is an ensemble of three
-signals derived from \emph{different} aspects of the model's behaviour, namely
-distributional spread, decision-boundary decisiveness, and cross-framing
-stability, combined by majority vote so that no single failure mode
-dominates.
-
-The framing is safety-asymmetric by intent: an unnecessary retrieval costs
-seconds of latency; a confidently wrong closed-book answer in a clinical
-setting costs far more. The ensemble is therefore deliberately biased toward
-retrieving when the signals disagree. The evaluation partially
-\emph{complicates} this design story, since the ablation in
-Section~\ref{sec:eval-ablation} finds that the probe over-triggers retrieval
-and the flat majority vote is what protects the ensemble from it, and that
-result is reported there rather than smoothed over here: the design was
-reasoned in advance, then tested, and the test taught something the
-reasoning had not.
+The design response to these three failure modes is an ensemble drawing on
+different aspects of the model's behaviour, namely distributional spread,
+decision-boundary decisiveness and cross-framing stability, combined by
+majority vote so that no single failure mode dominates. The framing is
+safety-asymmetric by intent, since an unnecessary retrieval costs seconds of
+latency while a confidently wrong closed-book answer in a clinical setting
+costs far more, so the ensemble is deliberately biased toward retrieving when
+its signals disagree. The evaluation partially complicates this story, because
+the ablation of Section~\ref{sec:eval-ablation} finds that the probe
+over-triggers retrieval and that the flat majority vote is what protects the
+ensemble from it, and that result is reported there rather than smoothed over
+here.
 
 \subsection{Gate 1: Token Entropy}
 \label{sec:method-gate-entropy}
