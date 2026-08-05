@@ -1,9 +1,8 @@
 % ---------------------------------------------------------------------
 % Chapter: the scaling study (Llama-3.2-3B, Qwen2.5-7B, Qwen2.5-14B)
-% Merged 2026-08-04 from qwen_scaling.tex + model_comparison.tex (both
-% retired from main.tex; kept in git history).
-% Every number is a macro from results/tables/numbers.tex. Do not write
-% literals here -- see scripts/generate_tables.py.
+% Trimmed 2026-08-05 for the word limit. Section 6.9 (summary) removed and
+% its two load-bearing points folded into 6.8; 6.1 compressed. No result,
+% caveat or number was dropped. Every number remains a numbers.tex macro.
 % ---------------------------------------------------------------------
 
 \chapter{Scaling the Gate: Three Models}
@@ -12,65 +11,60 @@
 \section{Why One Model Is Not Enough}
 \label{sec:scaling-why}
 
-Every claim in Chapter~\ref{ch:eval} rests on a single quantised
-Llama-3.2-3B. Two of those claims are about the \emph{mechanism} rather than
-the model, namely that gate thresholds must be calibrated to the model they
-govern, and that retrieving selectively beats retrieving always, and a
-mechanism claim supported by one instance is an anecdote. This chapter
-replicates the full pipeline on Qwen2.5-7B-Instruct and
-Qwen2.5-14B-Instruct \citep{qwen25} and reads the three models as a scaling
-curve.
+Two of the claims made in Chapter~\ref{ch:eval} are about the mechanism
+rather than about the model that produced them, namely that gate thresholds
+have to be calibrated to the model they govern, and that retrieving
+selectively beats retrieving always. A mechanism claim supported by one
+instance is an anecdote, so this chapter replicates the full pipeline on
+Qwen2.5-7B-Instruct and Qwen2.5-14B-Instruct \citep{qwen25} and reads the
+three models as a scaling curve.
 
-The experimental discipline is that only the model changes. The corpus is
-the same MedCorp index, the questions are the same 200 MIRAGE items and the
-same 200 PubMedQA items, the policies are the same code paths, and the
-quantisation is deliberately held at \texttt{Q4\_K\_M} so that ``larger
-model'' is not confounded with ``less aggressively quantised model''. Where
-something \emph{had} to change, namely the gate thresholds, that change is
-itself the object of study rather than a nuisance parameter.
+The experimental discipline is that only the model changes. The corpus is the
+same MedCorp index, the questions are the same 200 MIRAGE and 200 PubMedQA
+items, the policies are the same code paths, and the quantisation is held at
+\texttt{Q4\_K\_M} so that a larger model is not confounded with a less
+aggressively quantised one. The one thing that had to change is the gate
+thresholds, and that change is itself the object of study.
 Table~\ref{tab:scaling-results} carries the full numbers.
 
 \input{results/tables/tab_scaling_results}
 
-One validity constraint governs how the table may be read, and it is stated
-before any result. ``Selective retrieval beats always-retrieve'' is a
-statement about accuracy \emph{at a given retrieval budget}, and the three
-gated policies do not share one: they retrieve on \retPfiveMcq{},
-\retQwenPfiveMcq{} and \retQwenFourteenPfiveMcq{} of multiple-choice
-queries respectively, for reasons dissected in
-Section~\ref{sec:scaling-budget}. Within each model the policies are
-compared at a controlled budget and the ordering is meaningful;
-\emph{across} models a raw difference between two P5 rows confounds scale
-with retrieval rate. The comparisons that survive are those that fix the
-budget by construction, that is, the closed-book policies, which all retrieve
-0\%, together with the within-model orderings, read as directions rather than
+One validity constraint governs how the table may be read. ``Selective
+retrieval beats always-retrieve'' is a statement about accuracy at a given
+retrieval budget, and the three gated policies do not share one, since they
+retrieve on \retPfiveMcq{}, \retQwenPfiveMcq{} and
+\retQwenFourteenPfiveMcq{} of multiple-choice queries respectively for the
+reasons dissected in Section~\ref{sec:scaling-budget}. Within each model the
+policies are compared at a controlled budget and the ordering is meaningful,
+but across models a raw difference between two P5 rows confounds scale with
+retrieval rate. The comparisons that survive are those that fix the budget by
+construction, meaning the closed-book policies, which all retrieve 0\%,
+together with the within-model orderings read as directions rather than as
 cross-model magnitudes.
 
-\section{Calibration Does Not Transfer - Confirmed Prospectively}
+\section{Calibration Does Not Transfer, Confirmed Prospectively}
 \label{sec:scaling-nontransfer}
 
-The single-model version of this claim
-(Section~\ref{sec:eval-calibration}) was necessarily retrospective:
-thresholds were found not to fire, and were then refitted. On Qwen the
-claim was tested \emph{before} the evaluation ran. Applying the 3B's
-shipped $\tau = 0.70/0.70$ to a 50-question calibration sample of the 7B
-produced an ensemble retrieval rate of \retQwenCalibAtLlamaTau{}: the
-operating point was almost entirely degenerate, and P5 would have been
-indistinguishable from closed-book P3.
+The single-model version of this claim (Section~\ref{sec:eval-calibration})
+was necessarily retrospective, since the thresholds were found not to fire and
+were then refitted. On Qwen the claim was tested before the evaluation ran.
+Applying the 3B's shipped $\tau = 0.70/0.70$ to a 50-question calibration
+sample of the 7B produced an ensemble retrieval rate of
+\retQwenCalibAtLlamaTau{}, so the operating point was almost entirely
+degenerate and P5 would have been indistinguishable from closed-book P3.
 
-This is the strongest available form of the claim. The prediction was made
-from the 3B's signal distribution, the test was run on a model that did not
-exist in the original experiment, and the predicted failure occurred, then
-recurred at 14B, whose calibrated thresholds
-(Table~\ref{tab:gate-saturation}) differ again from both smaller models.
-Gate thresholds are properties of a model's signal distribution, not
-constants of the method, exactly as the quantisation-calibration
-literature would predict \citep{proskurina2024quantization}.
-
-Thresholds were therefore refitted for each Qwen model by matching the 3B's
-\emph{per-gate retrieval budget} rather than by copying its $\tau$. Copying
-$\tau$ preserves a number that means nothing across models; matching the
-budget preserves the quantity the comparison is actually about.
+This is the strongest available form of the claim, because the prediction was
+made from the 3B's signal distribution, the test was run on a model that did
+not exist in the original experiment, and the predicted failure occurred and
+then recurred at 14B, whose calibrated thresholds
+(Table~\ref{tab:gate-saturation}) differ again from both smaller models. Gate
+thresholds are properties of a model's signal distribution rather than
+constants of the method, which is what the quantisation-calibration literature
+would predict \citep{proskurina2024quantization}. Thresholds were therefore
+refitted for each Qwen model by matching the 3B's per-gate retrieval budget
+rather than by copying its $\tau$, since copying $\tau$ preserves a number
+that means nothing across models while matching the budget preserves the
+quantity the comparison is actually about.
 
 \section{The Budget Did Not Match, and Why}
 \label{sec:scaling-budget}
@@ -78,35 +72,33 @@ budget preserves the quantity the comparison is actually about.
 \input{results/tables/tab_budget_match}
 
 The refit did not achieve its target. Against the 3B's \retPfiveMcq{}
-ensemble budget, the 7B realised \retQwenPfiveMcq{} and the 14B
+ensemble budget the 7B realised \retQwenPfiveMcq{} and the 14B
 \retQwenFourteenPfiveMcq{}. The two tunable members landed close to target
-(Table~\ref{tab:budget-match}); the failure is entirely attributable to the
-third. On multiple-choice the hallucination probe is threshold-free by
-construction: it generates two differently-framed drafts and votes to
-retrieve when the extracted answer letters disagree, and there is no
-parameter to move. Its vote rate fell from \probeFireLlamaMcq{} on Llama to
-\probeFireQwenMcq{} on both Qwen models, because a larger model simply
-agrees with itself far more often across framings. With one member of a
-majority-of-three vote effectively silent, the ensemble reduces to
-``entropy \emph{and} margin'', a conjunction that is strictly harder than the
-majority rule it replaces, so the achievable budget falls below target
-no matter how the other two members are tuned, and falls further the larger
-the model.
+(Table~\ref{tab:budget-match}), so the shortfall is attributable entirely to
+the third. On multiple-choice the hallucination probe is threshold-free by
+construction, because it generates two differently-framed drafts and votes to
+retrieve when the extracted answer letters disagree, and there is no parameter
+to move. Its vote rate fell from \probeFireLlamaMcq{} on Llama to
+\probeFireQwenMcq{} on both Qwen models, because a larger model agrees with
+itself far more often across framings. With one member of a majority-of-three
+vote effectively silent, the ensemble reduces to entropy \emph{and} margin,
+which is a conjunction strictly harder to satisfy than the majority rule it
+replaces, so the achievable budget falls below target no matter how the other
+two members are tuned, and falls further the larger the model.
 
-This is a genuine finding about gate ensembles at scale rather than a
-misconfiguration, with a design implication: an ensemble whose members are
-not all recalibratable cannot hold a retrieval budget constant across
-models. It is also, unavoidably, a limitation on the cross-model
+This is a finding about gate ensembles at scale rather than a
+misconfiguration, and it carries a design implication, which is that an
+ensemble whose members are not all recalibratable cannot hold a retrieval
+budget constant across models. It is also a limitation on the cross-model
 comparison, recorded as such in Section~\ref{sec:disc-limitations}.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.8\linewidth]{results/figures/fig_scaling}
   \caption{Multiple-choice accuracy against the retrieval budget actually
-    spent. Every model loses accuracy as retrieval increases on this
-    corpus, and the larger models sit uniformly higher. The P5 points do
-    not share an $x$-position: the budgets are not matched, which is
-    precisely the limitation discussed in
+    spent. Every model loses accuracy as retrieval increases on this corpus,
+    and the larger models sit uniformly higher. The P5 points do not share an
+    $x$-position, which is the limitation discussed in
     Section~\ref{sec:scaling-budget}.}
   \label{fig:scaling}
 \end{figure}
@@ -114,49 +106,46 @@ comparison, recorded as such in Section~\ref{sec:disc-limitations}.
 \section{Closed-Book Capability: A Curve That Flattens}
 \label{sec:scaling-closedbook}
 
-Closed-book accuracy is the cleanest cross-model comparison, since no
-policy retrieves and no budget confound applies. It rises then plateaus:
-\accPthreeMcq{} at 3B, \accQwenPthreeMcq{} at 7B,
-\accQwenFourteenPthreeMcq{} at 14B. The two steps are not equal. The
-3B-to-7B step adds \scaleGainSmall{}pp; the 7B-to-14B step, across a model
-twice the size, adds \scaleGainLarge{}pp. Doubling the parameters a second
-time buys almost nothing on this benchmark.
+Closed-book accuracy is the cleanest cross-model comparison, since no policy
+retrieves and no budget confound applies. It rises and then plateaus, at
+\accPthreeMcq{} for 3B, \accQwenPthreeMcq{} for 7B and
+\accQwenFourteenPthreeMcq{} for 14B. The two steps are not equal, because the
+3B-to-7B step adds \scaleGainSmall{}pp while the 7B-to-14B step, across a
+model twice the size, adds \scaleGainLarge{}pp. Doubling the parameters a
+second time buys almost nothing on this benchmark.
 
-For the 3B-to-7B step, both models answered the same \mcnemarN{} questions,
-so a paired test is available: \mcnemarBoth{} correct for both,
-\mcnemarNeither{} for neither, \mcnemarOnlyQwen{} for Qwen alone and
-\mcnemarOnlyLlama{} for Llama alone, giving $\chi^2 = \mcnemarChi{}$ on the
-discordant pairs, comfortably beyond the $3.84$ threshold for $p < 0.05$.
-The larger model is genuinely better, and the \mcnemarOnlyLlama{}
-questions the smaller model wins show that scale redistributes competence
-rather than simply adding it. From 7B to 14B the aggregate barely moves,
-which is the more consequential fact for this dissertation and is taken up
-in Section~\ref{sec:scaling-bars}.
+Both models answered the same \mcnemarN{} questions on the first step, so a
+paired test is available: \mcnemarBoth{} correct for both, \mcnemarNeither{}
+for neither, \mcnemarOnlyQwen{} for Qwen alone and \mcnemarOnlyLlama{} for
+Llama alone, giving $\chi^2 = \mcnemarChi{}$ on the discordant pairs, which is
+comfortably beyond the $3.84$ threshold for $p < 0.05$. The larger model is
+genuinely better, and the \mcnemarOnlyLlama{} questions the smaller model
+wins show that scale redistributes competence rather than simply adding it.
+From 7B to 14B the aggregate barely moves, which is the more consequential
+fact and is taken up in Section~\ref{sec:scaling-bars}.
 
 \section{Selective Beats Always-Retrieve, and at 14B, Significantly}
 \label{sec:scaling-selective}
 
 Within each model, where the comparison is legitimate, P5 leads P1 on
-multiple-choice at all three scales: by \diffPfivePone{}pp on the 3B,
+multiple-choice at all three scales, by \diffPfivePone{}pp on the 3B,
 \diffQwenPfivePone{}pp on the 7B and \diffFourteenPfivePone{}pp on the 14B.
 On the two smaller models the 95\% intervals (\diffPfivePoneCI{} and
-\diffQwenPfivePoneCI{}) cross zero: each is individually \emph{consistent
-with} an improvement rather than a demonstration of one. At 14B the
-interval is \diffFourteenPfivePoneCI{}, which excludes zero, so for the
-first time in this project the advantage of selective over always-retrieve
-is statistically significant on a single model. The claim is thus supported
-two ways at once: by three same-direction estimates whose agreement across
-scales is itself evidence, and by one estimate that clears significance on
-its own at the scale where the effect is strongest. Why the effect is
-strongest there is the next section's subject.
+\diffQwenPfivePoneCI{}) cross zero, so each is individually consistent with an
+improvement rather than a demonstration of one. At 14B the interval is
+\diffFourteenPfivePoneCI{}, which excludes zero, so the advantage of selective
+over always-retrieve is statistically significant on a single model for the
+first time in this project. The claim is therefore supported both by three
+same-direction estimates whose agreement across scales is itself evidence, and
+by one estimate that clears significance on its own.
 
 \section{The Mechanism: Distraction Scales with Capability}
 \label{sec:scaling-mechanism}
 
 The paired closed-book-versus-always-retrieve analysis of
 Section~\ref{sec:eval-distraction}, repeated at each scale, counts the
-multiple-choice questions where always-retrieving \emph{breaks} a
-closed-book-correct answer against those it \emph{fixes}:
+multiple-choice questions where always-retrieving breaks a closed-book-correct
+answer against those it fixes:
 
 \begin{quote}
   3B: \breakLlama{} broken / \fixLlama{} fixed (\harmRatioLlama{}$\times$)
@@ -167,56 +156,54 @@ closed-book-correct answer against those it \emph{fixes}:
 \end{quote}
 
 The fixes never vanish, since the corpus keeps supplying answers the model
-lacked at every scale, but the breakages grow, and the 14B breaks the
-most correct answers of any model. This is the signature of displacement,
-not of a deficient corpus: a corpus that simply lacked information would
-damage a stronger model \emph{less}, because the stronger model can fall
-back on what it knows, whereas here the strongest model is harmed the most
-precisely because it has the most correct knowledge to be displaced.
-Section~\ref{sec:disc-synthesis} develops this into the dissertation's
-central reframing, that a gate's value is protection rather than efficiency,
-and rules out the corpus-absence objection in full. For the scaling story
-it is enough to note that the phenomenon the gate exists to manage does not
-weaken with scale; it strengthens, and it is why always-retrieve is
-punished hardest at 14B, opening the wide gap that makes
-Section~\ref{sec:scaling-selective}'s result significant.
+lacked at every scale, but the breakages grow and the 14B breaks the most
+correct answers of any model. That gradient is the signature of displacement
+rather than of a deficient corpus, because a corpus that simply lacked
+information would damage a stronger model less, given that a stronger model
+can fall back on what it knows, whereas here the strongest model is harmed the
+most precisely because it holds the most correct knowledge to be displaced.
+Section~\ref{sec:disc-synthesis} develops this into the dissertation's central
+reframing and rules out the corpus-absence objection in full. For the scaling
+story it is enough that the phenomenon the gate exists to manage strengthens
+with scale rather than weakening, which is why always-retrieve is punished
+hardest at 14B and why the gap there is wide enough to reach significance.
 
 \section{Open-Ended Questions: Saturation, Then Inversion}
 \label{sec:scaling-saturation}
 
-The thresholds refitted in Section~\ref{sec:scaling-nontransfer} were
-fitted on multiple-choice drafts. Reusing them unchanged on open-ended
-drafts proved unsound, and the evidence shows how badly.
+The thresholds refitted in Section~\ref{sec:scaling-nontransfer} were fitted
+on multiple-choice drafts, and reusing them unchanged on open-ended drafts
+proved unsound.
 
 \input{results/tables/tab_gate_saturation}
 
-The entropy gate votes to retrieve when its signal exceeds $\tau$; on the
-7B's open-ended questions the \emph{smallest} observed signal,
+The entropy gate votes to retrieve when its signal exceeds $\tau$, and on the
+7B's open-ended questions the smallest observed signal,
 \qwenOpenEntropyMin{}, already exceeds its threshold of
 \qwenOpenEntropyTau{}. The margin gate votes when its signal falls below
-$\tau$; its \emph{largest} observed signal, \qwenOpenMarginMax{}, lies
-below its threshold of \qwenOpenMarginTau{}. Neither gate has a decision to
-make: every question retrieved, and P5 was not a selective policy at all,
-since it was P1 wearing P5's name (Table~\ref{tab:gate-saturation},
+$\tau$, and its largest observed signal, \qwenOpenMarginMax{}, lies below its
+threshold of \qwenOpenMarginTau{}. Neither gate has a decision to make, so
+every question retrieved and P5 was not a selective policy at all but P1
+wearing P5's name (Table~\ref{tab:gate-saturation},
 Figure~\ref{fig:gate-saturation}). The cause is a distributional shift the
-method did not anticipate: a multiple-choice draft is a single letter, an
-open-ended draft is a paragraph of free text, and their signal
+method did not anticipate, since a multiple-choice draft is a single letter
+while an open-ended draft is a paragraph of free text, and their signal
 distributions barely overlap (Figure~\ref{fig:signal-shift}). The lesson
-generalises: \textbf{gate thresholds are task-specific, not merely
+generalises: \textbf{gate thresholds are task-specific as well as
 model-specific}, and a threshold fitted on one question format must not be
 deployed on another. Llama escapes total saturation on the same task only
-by luck, because its $\tau = 0.70$ happens to fall inside its open-ended
-distribution, though at \retPfiveOpen{} retrieval, far above the intended
-budget. The open-ended gated runs on both Qwen models were therefore
-re-calibrated on open-ended drafts (one global operating point per task
-type), and it is those runs the results below report.
+because its $\tau = 0.70$ happens to fall inside its open-ended distribution,
+which is luck rather than design, and even then it retrieves at
+\retPfiveOpen{}, far above the intended budget. The open-ended gated runs on
+both Qwen models were therefore recalibrated on open-ended drafts, using one
+global operating point per task type, and it is those runs reported below.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\linewidth]{results/figures/fig_gate_saturation}
   \caption{Each gate's threshold against the distribution of the signal it
-    thresholds. A threshold drawn outside its own range bar is a gate with
-    no decision to make. Both of the 7B's logit gates are in that state on
+    thresholds. A threshold drawn outside its own range bar is a gate with no
+    decision to make, and both of the 7B's logit gates are in that state on
     open-ended questions under multiple-choice thresholds.}
   \label{fig:gate-saturation}
 \end{figure}
@@ -224,17 +211,16 @@ type), and it is those runs the results below report.
 \begin{figure}[t]
   \centering
   \includegraphics[width=\linewidth]{results/figures/fig_signal_shift}
-  \caption{Gate-signal distributions for the same model and the same gate
-    on multiple-choice versus open-ended questions, with the
-    multiple-choice threshold overlaid. The distributions barely overlap,
-    which is why a threshold fitted on one lands in the wrong part of the
-    other.}
+  \caption{Gate-signal distributions for the same model and the same gate on
+    multiple-choice versus open-ended questions, with the multiple-choice
+    threshold overlaid. The distributions barely overlap, which is why a
+    threshold fitted on one lands in the wrong part of the other.}
   \label{fig:signal-shift}
 \end{figure}
 
 With the gates functioning, the open-ended arm is complete at $n=200$ for
-every policy and model, and the finding is in the \emph{ordering} of the
-three policies and how it changes with scale:
+every policy and model, and the finding lies in the ordering of the three
+policies and how it changes with scale:
 
 \begin{quote}
   \textbf{3B:} P1 (\fOnePoneOpen{}) $>$ P5 (\fOnePfiveOpen{}) $>$ P3
@@ -242,79 +228,61 @@ three policies and how it changes with scale:
   \textbf{7B:} P3 (\fOneQwenPthreeOpen{}) $>$ P5 (\fOneQwenPfiveOpen{})
   $>$ P1 (\fOneQwenPoneOpen{}), so closed-book is best and retrieval hurts.\\
   \textbf{14B:} P3 (\fOneQwenFourteenPthreeOpen{}) $>$ P5
-  (\fOneQwenFourteenPfiveOpen{}) $>$ P1
-  (\fOneQwenFourteenPoneOpen{}), the same inverted order as 7B.
+  (\fOneQwenFourteenPfiveOpen{}) $>$ P1 (\fOneQwenFourteenPoneOpen{}), the
+  same inverted order as 7B.
 \end{quote}
 
-The ordering \emph{inverts} between the smallest model and the larger two,
-and then holds: on the 3B, open-ended research questions sit outside the
-model's parametric knowledge, so retrieved context is a net help; by 7B the
-model already knows more than the passages reliably add, and the same
-corpus that helped now hurts; at 14B the inversion persists unchanged. The
-reversal is therefore not a quirk of the 7B but a stable property of the
-two larger models, which is the strongest form the observation can take without a
-fourth scale. Open-ended questions are simply where parametric knowledge
-runs out last: the retrieval-hurts regime that multiple-choice showed at
-every scale reaches open-ended only once the model is large enough. The
-usual cautions bound these rows: open-ended budgets are not matched across
-models, so P5 figures are ordinal positions within each model's own
-P1--P3 range; and paragraph-level token-$F_1$ is surface-lexical, so only
-orderings are interpreted, never the size of a gap.
+The ordering inverts between the smallest model and the larger two and then
+holds. On the 3B, open-ended research questions sit outside the model's
+parametric knowledge, so retrieved context is a net help, whereas by 7B the
+model already knows more than the passages reliably add and the same corpus
+that helped now hurts, and at 14B the inversion persists unchanged. The
+reversal is therefore a stable property of the two larger models rather than a
+quirk of the 7B, which is the strongest form the observation can take without
+a fourth scale. Open-ended questions are simply where parametric knowledge
+runs out last, so the retrieval-hurts regime that multiple-choice showed at
+every scale reaches open-ended only once the model is large enough. Two
+cautions bound these rows, which are that open-ended budgets are not matched
+across models, so the P5 figures are ordinal positions within each model's own
+P1 to P3 range, and that paragraph-level token-$F_1$ is surface-lexical, so
+only orderings are interpreted and never the size of a gap.
 
 \section{Scale Versus the Safety Bars}
 \label{sec:scaling-bars}
 
 The most consequential cross-model fact is where the curve sits relative to
 the clinical bars (\barLow{}/\barMedium{}/\barHigh{}). The 3B cleared none.
-Both Qwen models clear the \barLow{} low-risk bar on their best policy
-(\accQwenPthreeMcq{} and \accQwenFourteenPthreeMcq{}), so the safety
-envelope that was empty at 3B is populated at low risk once capability is
-sufficient. But \emph{neither larger model reaches the \barMedium{}
-medium-risk bar}, and the curve is flattening as it approaches: the
-\scaleGainLarge{}pp gained from 7B to 14B is a twelfth of the
-\scaleGainSmall{}pp gained from 3B to 7B. Extrapolating to the 80\% bar
-would require a scale increase that the measured diminishing returns give
-no reason to expect to be enough.
+Both Qwen models clear the \barLow{} low-risk bar on their best policy, at
+\accQwenPthreeMcq{} and \accQwenFourteenPthreeMcq{}, so the safety envelope
+that was empty at 3B is populated at low risk once capability is sufficient.
+Neither larger model reaches the \barMedium{} medium-risk bar, however, and
+the curve is flattening as it approaches, since the \scaleGainLarge{}pp gained
+from 7B to 14B is a twelfth of the \scaleGainSmall{}pp gained from 3B to 7B.
+Extrapolating to the medium-risk bar would require a scale increase that the
+measured diminishing returns give no reason to expect would be enough.
 
-This is the result that most sharpens the dissertation's argument. Scaling
-is a real lever, since it moved a system from clearing no bar to clearing the
-low one, but it is a saturating lever, and it saturates below the
-threshold that medium-risk clinical use would demand. That is precisely the
-regime in which \emph{method} matters: if raw capability cannot be scaled
-to safety within a practical range, then the discipline of retrieving only
-when it helps is not an efficiency nicety but part of how the remaining
-distance must be closed.
+This is the result that most sharpens the dissertation's argument. Scaling is
+a real lever, since it moved the system from clearing no bar to clearing the
+low one, but it is a saturating lever and it saturates below the threshold
+that medium-risk clinical use would demand. That is precisely the regime in
+which method matters, because if raw capability cannot be scaled to safety
+within a practical range, then the discipline of retrieving only when it helps
+becomes part of how the remaining distance has to be closed rather than an
+efficiency nicety. Two further results point the same way. The closed-book
+curve plateaus sharply after 7B, so using a bigger model is a weaker remedy
+than it first appears, and the open-ended retrieval-helps result from the 3B
+did not merely fail to replicate but inverted and then held inverted at 14B.
+Taken together they say that the value of retrieval is a function of the gap
+between what the model knows and what the passages add, which scaling closes
+on the tasks the model can already do, and which the gate exists to detect on
+the tasks it cannot.
 
-\section{What the Scaling Study Establishes}
-\label{sec:scaling-summary}
-
-Three predictions held. Closed-book capability rose with scale, supported
-by a paired test at $p<0.05$. Calibration non-transfer, predicted from each
-smaller model's signal distribution, was confirmed prospectively at every
-new scale. And selective retrieval beat always-retrieve in direction at all
-three scales, becoming significant at 14B.
-
-Three things were not predicted, and they are the more useful results. The
-closed-book curve \emph{plateaus} sharply after 7B, so ``just use a bigger
-model'' is a weaker remedy than it first appears. The medium-risk bar stays
-\emph{out of reach} even at 14B, relocating the burden from capability onto
-method. And the open-ended retrieval-helps result from the 3B did not
-merely fail to replicate but \emph{inverted}, then held inverted at 14B.
-Together they say that the value of retrieval is not a fixed property of
-the corpus or the method but a function of the gap between what the model
-knows and what the passages add, a gap that scaling closes on the tasks
-the model can already do, and that the gate exists to detect on the tasks
-it cannot. One caveat survives alongside: the cross-model retrieval budgets
-differ (Section~\ref{sec:scaling-budget}), so accuracy-at-matched-budget is
-established within each model but not across them, and the cross-model
-claims rest on the budget-independent comparisons.
-
-Latency, finally, is not comparable across all three models, because the 3B ran
-on CPU and both Qwen models on a T4 GPU, so a three-way comparison would
-measure the accelerator, not the model. The within-GPU comparison is clean:
-closed-book answers a multiple-choice question in \latQwenPthreeMcq{} (7B)
-and \latQwenFourteenPthreeMcq{} (14B); the gated policy takes
-\latQwenPfiveMcq{} and \latQwenFourteenPfiveMcq{} respectively. The gate's
-cost is the price of its extra draft generations, scales gently with model
-size, and remains within an interactive budget, so cost does not disturb
-the accuracy conclusions.
+Latency is not comparable across all three models, because the 3B ran on CPU
+and both Qwen models on a T4 GPU, so a three-way comparison would measure the
+accelerator rather than the model. The within-GPU comparison is clean, with
+closed-book answering a multiple-choice question in \latQwenPthreeMcq{} at 7B
+and \latQwenFourteenPthreeMcq{} at 14B against \latQwenPfiveMcq{} and
+\latQwenFourteenPfiveMcq{} for the gated policy. The gate's cost is the price
+of its extra draft generations, it scales gently with model size, and it
+remains within an interactive budget, so cost does not disturb the accuracy
+conclusions.
