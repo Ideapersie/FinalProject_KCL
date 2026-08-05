@@ -205,6 +205,38 @@ def render_gate_table_html(gate_details: Dict, gate_name: Optional[str]) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────
+# Answer cleanup
+# ─────────────────────────────────────────────────────────────────
+
+# Every chat markup this project can emit. A generation that reaches the token
+# cap without an EOS keeps going, and what it continues into is a fabricated
+# next turn — it re-opens one of these markers and then recites the system
+# prompt back. Cutting at the marker keeps exactly the model's answer.
+_TURN_MARKERS = ("[INST]", "[/INST]", "</s>", "<|im_start|>", "<|im_end|>",
+                 "<|eot_id|>", "<|start_header_id|>")
+
+
+def clean_answer(text: str) -> str:
+    """
+    Trim a generation at the point it starts hallucinating a new chat turn.
+
+    Display-only. The backend deliberately passes no `stop` sequences to
+    llama.cpp, because adding them now would change what every policy returns
+    and the reported results were produced without them. This trims the echo
+    for the reader without touching a byte of the evaluation path.
+    """
+    if not text:
+        return ""
+    cut = len(text)
+    for marker in _TURN_MARKERS:
+        found = text.find(marker)
+        if found != -1:
+            cut = min(cut, found)
+    # A truncated marker leaves its opening bracket behind ("... A. ] [INST").
+    return text[:cut].rstrip().rstrip("]").rstrip()
+
+
+# ─────────────────────────────────────────────────────────────────
 # Answer agreement strip
 # ─────────────────────────────────────────────────────────────────
 

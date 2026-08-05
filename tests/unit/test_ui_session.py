@@ -75,6 +75,17 @@ def test_without_a_gold_letter_nothing_is_scored():
     assert result.p5_correct is None and result.p3_correct is None
 
 
+def test_the_app_still_builds_against_the_installed_gradio():
+    """Widget arguments come and go between Gradio majors, and a removed one
+    raises only at build time — after the model and both indexes have loaded.
+    Skipped when Gradio is absent: it is a demo dependency, not an eval one."""
+    pytest.importorskip("gradio")
+    from medrag_adaptive.ui.app import build_app
+
+    session = DemoSession(_cfg(), MockLLMBackend(), MockRetriever())
+    build_app(session)
+
+
 def test_choices_produce_an_mcq_question():
     session = DemoSession(_cfg(), MockLLMBackend(confidence="high"), MockRetriever())
     result = session.answer("q", choices={"A": "one", "B": "two"})

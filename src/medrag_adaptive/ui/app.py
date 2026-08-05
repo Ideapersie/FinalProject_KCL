@@ -16,6 +16,7 @@ import gradio as gr
 from medrag_adaptive.models.openai_backend import OpenAIBackend
 from medrag_adaptive.ui.attribution import (
     align_draft,
+    clean_answer,
     render_agreement_html,
     render_chunks_html,
     render_entropy_html,
@@ -229,8 +230,9 @@ def build_app(session: DemoSession) -> "gr.Blocks":
             choice_c = gr.Textbox(label="C", scale=1)
             choice_d = gr.Textbox(label="D", scale=1)
         with gr.Row():
+            # "C" alone as a placeholder reads as a filled-in value at a glance.
             gold = gr.Textbox(label="Correct answer (optional)", scale=1,
-                              placeholder="C")
+                              placeholder="a letter, e.g. C")
             gr.Markdown("Leave the choices blank for a free-text question. "
                         "Give a letter here to score both policies against it.")
         submit = gr.Button("Run", variant="primary")
@@ -252,9 +254,15 @@ def build_app(session: DemoSession) -> "gr.Blocks":
         )
         heatmap_out = gr.HTML()
         with gr.Row():
-            p5_out = gr.Textbox(label="P5 — gated", lines=6, interactive=False)
-            p3_out = gr.Textbox(label="P3 — closed book", lines=6, interactive=False)
-            gold_out = gr.Textbox(label="Correct answer", lines=6, interactive=False)
+            # Open-ended answers run to the token cap, so these grow to fit and
+            # then scroll rather than clipping the answer at six lines.
+            # No show_copy_button: Gradio 6 removed the argument and raises.
+            p5_out = gr.Textbox(label="P5 — gated", lines=12, max_lines=24,
+                                interactive=False)
+            p3_out = gr.Textbox(label="P3 — closed book", lines=12, max_lines=24,
+                                interactive=False)
+            gold_out = gr.Textbox(label="Correct answer", lines=12, max_lines=24,
+                                  interactive=False)
         agreement_out = gr.HTML()
         identical_out = gr.Markdown()
         gr.Markdown("### Evidence")
@@ -323,7 +331,8 @@ def build_app(session: DemoSession) -> "gr.Blocks":
             yield (f"Done in {result.latency_s:.1f}s.",
                    _verdict_html(result),
                    render_gate_table_html(result.gate_details, result.gate_name),
-                   heat, result.p5_answer, result.p3_answer, gold_shown,
+                   heat, clean_answer(result.p5_answer),
+                   clean_answer(result.p3_answer), gold_shown,
                    render_agreement_html(result.p5_letter, result.p3_letter,
                                          result.gold_letter, result.p5_correct,
                                          result.p3_correct),

@@ -12,6 +12,7 @@ import math
 from medrag_adaptive.data.schema import Chunk
 from medrag_adaptive.ui.attribution import (
     align_draft,
+    clean_answer,
     highlight_terms,
     render_agreement_html,
     render_chunks_html,
@@ -189,6 +190,36 @@ def test_gate_table_single_gate_uses_the_payload_itself():
     )
     assert "0.420" in out
     assert "margin" not in out
+
+
+# ── answer cleanup ─────────────────────────────────────────────────
+
+def test_clean_answer_cuts_a_hallucinated_next_turn():
+    """Verbatim shape of the leak: the model answers, then re-opens [INST]
+    and recites the system prompt back."""
+    raw = ("The best answer is A. ] [INST]\nYou are a medical assistant. Use "
+           "the provided context to answer the question.")
+    assert clean_answer(raw) == "The best answer is A."
+
+
+def test_clean_answer_handles_every_markup_this_project_emits():
+    for marker in ("[INST]", "[/INST]", "</s>", "<|im_start|>", "<|im_end|>",
+                   "<|eot_id|>"):
+        assert clean_answer(f"Epinephrine. {marker} more junk") == "Epinephrine."
+
+
+def test_clean_answer_leaves_a_well_formed_answer_untouched():
+    text = "Anaphylactic shock requires immediate intramuscular epinephrine."
+    assert clean_answer(text) == text
+
+
+def test_clean_answer_cuts_at_the_earliest_marker():
+    assert clean_answer("A. <|im_end|> mid [INST] end") == "A."
+
+
+def test_clean_answer_of_empty_input():
+    assert clean_answer("") == ""
+    assert clean_answer(None) == ""
 
 
 # ── answer agreement strip ─────────────────────────────────────────
