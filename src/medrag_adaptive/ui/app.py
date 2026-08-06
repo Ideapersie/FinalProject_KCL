@@ -76,6 +76,14 @@ CSS = """
   --block-title-text-color: #5b636c;
   --input-background-fill: #ffffff;
   --input-border-color: #d7dbe0;
+  /* Without these four, focusing a box drops it to the dark-theme fill and the
+     text being typed goes grey-on-grey. The box stays white; focus is shown by
+     the border and ring instead. */
+  --input-background-fill-hover: #ffffff;
+  --input-background-fill-focus: #ffffff;
+  --input-border-color-hover: #b9c0c9;
+  --input-border-color-focus: #2f5d8a;
+  --input-shadow-focus: 0 0 0 3px rgba(47, 93, 138, .15);
   --body-text-color: #1b1f24;
   --body-text-color-subdued: #5b636c;
   --border-color-primary: #d7dbe0;
@@ -108,6 +116,13 @@ label > span, .block > label > span { color: #5b636c !important;
 .gradio-container tbody tr.selected td,
 .gradio-container tbody tr:hover th { background: #eef2f6 !important;
                                       color: #1b1f24 !important; }
+/* Belt and braces: some Gradio builds style the textarea directly rather than
+   through the variables above, so the element itself is pinned too. */
+.gradio-container textarea, .gradio-container input[type="text"] {
+  background: #ffffff !important; color: #1b1f24 !important; }
+.gradio-container textarea:focus, .gradio-container input[type="text"]:focus {
+  background: #ffffff !important; color: #1b1f24 !important; }
+.gradio-container textarea::placeholder { color: #9aa1aa !important; }
 .mr-heat { line-height: 2.0; }
 .mr-tok { padding: 2px 4px; margin: 1px; border-radius: 3px;
           font-family: ui-monospace, monospace; font-size: 13px; }
