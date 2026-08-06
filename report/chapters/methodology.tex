@@ -64,7 +64,7 @@ A \emph{policy} is a complete answering strategy: given a question, it decides
 what (if anything) to retrieve and produces an answer. All policies implement
 a single method, \texttt{answer(question) $\rightarrow$ PolicyResult}, so the
 run driver is agnostic to which policy it holds, which is the precondition for a
-fair comparative experiment. Five policies span the design space
+fair comparative experiment. Four policies are evaluated
 (Table~\ref{tab:setup}):
 
 \input{results/tables/tab_setup}
@@ -73,11 +73,6 @@ fair comparative experiment. Five policies span the design space
   \item \textbf{P1 (always-retrieve)} retrieves for every query and answers
     with the evidence in context. It is the cost ceiling and the conventional
     RAG baseline.
-  \item \textbf{P2 (always-retrieve with citations)} additionally asks the
-    model to name its sources; following the attribution-evaluation
-    convention of \citet{alce2023}, cited titles are matched leniently back
-    to retrieved chunks and invented citations are dropped rather than
-    counted.
   \item \textbf{P3 (closed-book)} never retrieves: the parametric-knowledge
     reference point and the cost floor.
   \item \textbf{P4 (hybrid)} is P1 bound to the hybrid (rank-fusion)
@@ -87,11 +82,26 @@ fair comparative experiment. Five policies span the design space
     \textsc{skip}.
 \end{itemize}
 
-Two policies from the original project plan were deliberately scoped out: a
-user-facing retrieval toggle (P6) and a multi-agent variant (P7). Both add
-breadth without informing the central question of when a system
-\emph{should} retrieve, and the evaluation depth spent instead on paired
-analyses and ablations (Chapter~\ref{ch:eval}) proved the better trade.
+A fifth policy, \textbf{P2 (always-retrieve with citations)}, is implemented
+which extends P1 by asking the model to name its sources, matched leniently back to
+retrieved chunks after the attribution-evaluation convention of
+\citet{alce2023} but1 is not evaluated as a distinct condition here, for two
+reasons. Its retrieval behaviour is identical to P1, so its answer accuracy
+carries no information the central ``when to retrieve'' question does not already
+get from P1. And its one distinct output, citation quality, cannot be scored on
+these benchmarks: MIRAGE supplies only a gold letter and PubMedQA a free-text
+paragraph, neither of which provides the passage-level attribution gold that
+grounded-citation precision and recall require. The source-transparency goal P2
+serves --- making the evidence behind an answer inspectable --- is nonetheless
+realised qualitatively in the demo interface (Section~\ref{sec:impl-demo}),
+which surfaces each retrieved chunk with the query terms it matched; what P2 as
+a \emph{scored} policy would add is a quantitative citation precision and recall,
+and that number, requiring an ALCE-style annotated corpus, is left to future
+work (Section~\ref{sec:conc-future}). Two further policies from the original plan
+were scoped out entirely: a user-facing retrieval toggle (P6) and a multi-agent
+variant (P7). Both add breadth without informing when a system \emph{should}
+retrieve, and the evaluation depth spent instead on paired analyses and
+ablations (Chapter~\ref{ch:eval}) proved the better trade.
 
 \section{Retrieval}
 \label{sec:method-retrieval}
