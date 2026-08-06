@@ -1,7 +1,7 @@
 # Adaptive Retrieval Gating for Safety-Aware Medical RAG
 
 MSc Artificial Intelligence dissertation (7CCSMPRJ), King's College London.
-Tharit Mohamed Hussain Khan — 22058691.
+Tharit Mohamed Hussain Khan (22058691).
 
 A medical question-answering system that decides **per query** whether to retrieve,
 using only signals the language model already emits while generating. The gate is
@@ -10,7 +10,7 @@ model. The whole system is built to run offline on a commodity laptop with no GP
 
 The motivating finding is that retrieval is not a free safety net. On multiple-choice
 medical questions, injecting retrieved context **broke 46 previously-correct answers
-and fixed only 13** on a quantised 3B model — and the harm grows with model
+and fixed only 13** on a quantised 3B model, and the harm grows with model
 capability, reaching 55 broken against 10 fixed at 14B. Selective retrieval is
 therefore studied as *protection*, not as a cost optimisation.
 
@@ -26,13 +26,13 @@ experiment.
 
 | Artifact | Size | Ships? | How to obtain |
 |---|---|---|---|
-| Source, configs, tests, report | ~2 MB | yes | — |
-| `results/raw_logs/` — the experimental record | 14 MB | **yes** | not reproducible without re-running everything (~15 h) |
+| Source, configs, tests, report | ~2 MB | yes | included |
+| `results/raw_logs/`, the experimental record | 14 MB | **yes** | not reproducible without re-running everything (~15 h) |
 | `results/tables/`, `results/figures/` | 14 MB | yes | regenerate with the scripts in §5 |
-| `data/raw/` — MIRAGE + PubMedQA question sets | 4 MB | yes | `scripts/download_datasets.py` |
-| `models/` — GGUF weights | 1.9 GB+ | no | HuggingFace download (§3.2) |
-| `data/corpora/medcorp_tp.jsonl` — 425,847 chunks | 413 MB | no | `scripts/build_medcorp.py` (§3.3) |
-| `indexes/` — FAISS + BM25 | 2.4 GB | no | built by the same command (§3.3) |
+| `data/raw/`, the MIRAGE and PubMedQA question sets | 4 MB | yes | `scripts/download_datasets.py` |
+| `models/`, the GGUF weights | 1.9 GB+ | no | HuggingFace download (§3.2) |
+| `data/corpora/medcorp_tp.jsonl`, 425,847 chunks | 413 MB | no | `scripts/build_medcorp.py` (§3.3) |
+| `indexes/`, FAISS and BM25 | 2.4 GB | no | built by the same command (§3.3) |
 
 Because the run logs are included, **you can regenerate and verify every number,
 table and figure in the dissertation without downloading a model or building the
@@ -93,8 +93,8 @@ The scaling models, only if you intend to reproduce the 7B/14B arms (GPU
 recommended). `configs/models/qwen7b.yaml` and `qwen14b.yaml` expect these exact
 paths:
 
-- `models/qwen2.5-7b-instruct-q4_k_m.gguf` — from `bartowski/Qwen2.5-7B-Instruct-GGUF`
-- `models/qwen2.5-14b-instruct-q4_k_m.gguf` — from `bartowski/Qwen2.5-14B-Instruct-GGUF`
+- `models/qwen2.5-7b-instruct-q4_k_m.gguf`, from `bartowski/Qwen2.5-7B-Instruct-GGUF`
+- `models/qwen2.5-14b-instruct-q4_k_m.gguf`, from `bartowski/Qwen2.5-14B-Instruct-GGUF`
 
 All three are held at `Q4_K_M` on purpose: varying quantisation across scales would
 confound "bigger model" with "less aggressively quantised model".
@@ -114,12 +114,12 @@ python scripts/build_medcorp.py --sources textbooks pubmed \
 Downloads the MedRAG textbooks corpus plus a 300,000-passage PubMed slice, embeds
 every chunk with `all-MiniLM-L6-v2`, and writes:
 
-- `data/corpora/medcorp_tp.jsonl` — 425,847 chunks
-- `indexes/faiss_medcorp_tp/` — exact `IndexFlatIP`
+- `data/corpora/medcorp_tp.jsonl`, 425,847 chunks
+- `indexes/faiss_medcorp_tp/`, an exact `IndexFlatIP`
 - `indexes/bm25_medcorp_tp.pkl`
 
 This is the long pole: expect several hours on CPU, dominated by embedding. The
-build is **resumable** — it checkpoints every 2,000-chunk shard, so an interrupted
+build is **resumable**: it checkpoints every 2,000-chunk shard, so an interrupted
 run continues where it stopped. Use `--stage {download,embed,assemble}` to run one
 phase at a time.
 
@@ -131,7 +131,8 @@ hosting hub at build time; this is recorded as a limitation in the dissertation.
 ## 4. Running experiments
 
 Every experiment is one policy over one dataset. Configuration is layered YAML,
-deep-merged in increasing precedence: `base → hardware → model → policy → experiment`.
+deep-merged in increasing precedence: `base` then `hardware` then `model` then
+`policy` then `experiment`.
 
 ```bash
 python scripts/run_experiment.py \
@@ -150,11 +151,11 @@ The policies (`configs/policies/`):
 
 | Policy | Behaviour |
 |---|---|
-| P1 | always retrieve — the conventional RAG baseline and cost ceiling |
-| P2 | always retrieve, with source citations |
-| P3 | closed-book — never retrieves; the parametric-knowledge reference and cost floor |
+| P1 | always retrieve; the conventional RAG baseline and cost ceiling |
+| P2 | always retrieve, with source citations (implemented, not evaluated; see dissertation §3.2) |
+| P3 | closed-book; never retrieves; the parametric-knowledge reference and cost floor |
 | P4 | always retrieve via hybrid rank fusion (RRF) |
-| P5 | **gated** — the proposed method; consults the three-gate ensemble per query |
+| P5 | **gated**: the proposed method; consults the three-gate ensemble per query |
 
 Runs are **resumable and deterministic**: output is append-only JSONL keyed by
 `question_id`, so re-running skips completed questions, and greedy decoding at a
@@ -174,8 +175,8 @@ python scripts/smoke_test_model.py --model-config configs/models/qwen7b.yaml \
 ### Scaling runs (7B / 14B)
 
 `notebooks/colab_scaling.ipynb` runs the identical pipeline on a Colab T4. Only the
-model file, its chat format and the calibrated gate thresholds change — policy and
-gate code are untouched, which is what makes the scaling comparison valid.
+model file, its chat format and the calibrated gate thresholds change; the policy
+and gate code are untouched, which is what makes the scaling comparison valid.
 
 ---
 
@@ -214,11 +215,11 @@ python scripts/analyse_chunk_relevance.py  # distraction study
 python -m pytest -q
 ```
 
-240 tests, ~95 seconds, **no model or dataset download required** — a mock backend
-supplies deterministic text and synthetic logit distributions. Coverage spans
-configuration merging, retrieval ranking and index round-trips, every gate's
-threshold and abstain behaviour, ensemble voting and degraded-mode fallback,
-scoring, and the resumable run driver.
+The suite runs in ~100 seconds with **no model or dataset download required**: a
+mock backend supplies deterministic text and synthetic logit distributions.
+Coverage spans configuration merging, retrieval ranking and index round-trips,
+every gate's threshold and abstain behaviour, ensemble voting and degraded-mode
+fallback, scoring, and the resumable run driver.
 
 The drift-guard test skips rather than fails when `results/raw_logs/` is absent, so
 confirm it actually ran if you are verifying reported numbers.
@@ -246,8 +247,8 @@ python scripts/run_demo.py
 A Gradio interface that answers a question under both the gated policy and
 closed-book, showing what retrieval bought: the gate's decision with every
 member's signal, threshold and vote, a draft-token entropy heatmap, and term
-highlighting over retrieved chunks. Four preset questions — two the logged run
-skipped, two it retrieved on — sit under the Run button.
+highlighting over retrieved chunks. Four preset questions (two the logged run
+skipped, two it retrieved on) sit under the Run button.
 
 Answers appear as three columns, P5 against P3 against the correct answer, over
 a strip that is green only when **both** policies picked the gold letter, amber
@@ -262,8 +263,8 @@ SKIP path still answers, but RETRIEVE reports the load error instead of evidence
 
 The demo runs at `--threads 12 --n-batch 512 --max-new-tokens 64`, well above the
 `hardware_medium` evaluation tier the reported latencies were measured on. None
-of the three affects a gate signal — the draft is greedy and its length is fixed
-by `gate.draft_max_tokens` — so the verdicts match the logged run. Measured on
+of the three affects a gate signal (the draft is greedy and its length is fixed
+by `gate.draft_max_tokens`), so the verdicts match the logged run. Measured on
 the 16-core development laptop, against the ~154 s median of the logged
 evaluation run:
 
@@ -271,7 +272,7 @@ evaluation run:
 |---|---|
 | startup (model + both indexes + warm-up) | ~9 s |
 | a question the gate skips | ~21 s |
-| a question the gate retrieves on | ~60-95 s |
+| a question the gate retrieves on | ~60 to 95 s |
 
 The retrieval path is slower because it adds the FAISS and BM25 lookups and then
 answers over five retrieved chunks. Lowering **top-k** in Settings shortens that
@@ -285,9 +286,9 @@ Screenshots of all three panels are in `results/figures/demo/`.
 
 ```
 src/medrag_adaptive/    package: config, retrieval, gating, policies, evaluation
-configs/                layered YAML — base, hardware tiers, models, policies, experiments
+configs/                layered YAML: base, hardware tiers, models, policies, experiments
 scripts/                data prep, corpus/index builds, experiment runner, analyses
-tests/                  240 model-free unit, integration and regression tests
+tests/                  model-free unit, integration and regression tests
 results/raw_logs/       the experimental record (input to every reported number)
 results/tables/         generated LaTeX tables + numbers.tex macros
 results/figures/        generated figures (PDF + PNG)
@@ -302,12 +303,12 @@ docs/                   supplementary notes
 
 Code is released under the licence in `LICENSE`. The corpora and benchmarks are
 third-party research datasets, used here under their own terms and **not
-redistributed** in this archive — they are downloaded from source by the scripts
+redistributed** in this archive; they are downloaded from source by the scripts
 above:
 
-- **MIRAGE / MedRAG** (Xiong et al., 2024) — benchmark and corpora
-- **PubMedQA** (Jin et al., 2019) — open-ended question set
-- **Llama 3.2** (Meta) and **Qwen2.5** (Alibaba) — model weights, under their
+- **MIRAGE / MedRAG** (Xiong et al., 2024): benchmark and corpora
+- **PubMedQA** (Jin et al., 2019): open-ended question set
+- **Llama 3.2** (Meta) and **Qwen2.5** (Alibaba): model weights, under their
   respective licences
 
 No patient data was processed at any point in this project. All sources are public
