@@ -83,16 +83,16 @@ fair comparative experiment. Four policies are evaluated
 \end{itemize}
 
 A fifth policy, \textbf{P2 (always-retrieve with citations)}, is implemented
-which extends P1 by asking the model to name its sources, matched leniently back to
+extending upon P1 by asking the model to name its sources, matched leniently back to
 retrieved chunks after the attribution-evaluation convention of
-\citet{alce2023} but1 is not evaluated as a distinct condition here, for two
+\citet{alce2023} but is not evaluated as a distinct condition here, for two
 reasons. Its retrieval behaviour is identical to P1, so its answer accuracy
 carries no information the central ``when to retrieve'' question does not already
 get from P1. And its one distinct output, citation quality, cannot be scored on
 these benchmarks: MIRAGE supplies only a gold letter and PubMedQA a free-text
 paragraph, neither of which provides the passage-level attribution gold that
 grounded-citation precision and recall require. The source-transparency goal P2
-serves --- making the evidence behind an answer inspectable --- is nonetheless
+serves, making the evidence behind an answer inspectable is nonetheless
 realised qualitatively in the demo interface (Section~\ref{sec:impl-demo}),
 which surfaces each retrieved chunk with the query terms it matched; what P2 as
 a \emph{scored} policy would add is a quantitative citation precision and recall,
