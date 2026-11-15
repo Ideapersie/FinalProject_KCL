@@ -3,6 +3,10 @@
 MSc Artificial Intelligence dissertation (7CCSMPRJ), King's College London.
 Tharit Mohamed Hussain Khan (22058691).
 
+**[Replay demo](https://ideapersie.github.io/FinalProject_KCL/demo/)**: browse all 200 evaluation questions and see, for each one, the closed-book answer, the always-retrieve answer, the gate's three signals and its decision, and the evidence the retriever returned. It is generated from the experiment logs, needs no model, and runs in any browser. The live Gradio demo is in [section 8](#8-demo-interface).
+
+[![Replay demo](docs/demo/screenshot.jpg)](https://ideapersie.github.io/FinalProject_KCL/demo/)
+
 A medical question-answering system that decides **per query** whether to retrieve,
 using only signals the language model already emits while generating. The gate is
 training-free: no fine-tuning, no labelled "should-retrieve" data, and no second
@@ -10,9 +14,33 @@ model. The whole system is built to run offline on a commodity laptop with no GP
 
 The motivating finding is that retrieval is not a free safety net. On multiple-choice
 medical questions, injecting retrieved context **broke 46 previously-correct answers
-and fixed only 13** on a quantised 3B model, and the harm grows with model
-capability, reaching 55 broken against 10 fixed at 14B. Selective retrieval is
-therefore studied as *protection*, not as a cost optimisation.
+and fixed only 13** on a quantised 3B model. Scale does not make the problem go away:
+at 14B retrieval broke 55 and fixed 10. Selective retrieval is therefore studied as
+*protection*, not as a cost optimisation.
+
+## Results at a glance
+
+200 MIRAGE-MMLU questions, MedRAG textbooks + 300K PubMed abstracts (425,847 chunks), BM25 + dense retrieval fused with RRF.
+
+| Model | Closed-book | Always retrieve | Gated | Broken by retrieval | Fixed by retrieval | Gate retrieval rate |
+|---|---|---|---|---|---|---|
+| Llama-3.2-3B (Q4, CPU) | 62.0% | 45.5% | 54.0% | 46 | 13 | 49.5% |
+| Qwen2.5-7B | 74.5% | 65.0% | 72.0% | 31 | 12 | 31.5% |
+| Qwen2.5-14B | 75.5% | 53.0% | 68.5% | 55 | 10 | 24.0% |
+
+At every scale the gate recovers between half and three quarters of the accuracy that always-retrieving throws away. At 3B it kept 22 of the 46 answers that retrieval broke. On open-ended questions the sign flips and retrieval helps (token F1 0.211 against 0.190 closed-book), which is why the decision has to be made per query. The table is recomputed from `results/raw_logs/` by `scripts/export_replay.py`.
+
+## How the gate decides
+
+The model first writes a short closed-book draft. Three signals are read off that draft, and retrieval runs only if at least two vote for it:
+
+| Signal | Votes to retrieve when |
+|---|---|
+| Token entropy | mean per-token entropy of the draft is above a threshold |
+| Logit margin | mean gap between the top two token probabilities is below a threshold |
+| Hallucination probe | the same question framed two different ways gets two different answers |
+
+A central finding of the dissertation is calibration: with thresholds taken from the literature, the two logit gates never fire on a small quantised model (its entropy peaks at 1.59 nats against a >2.5 threshold), so the probe is the only signal that votes. With model-specific thresholds, used for the runs in the table, all three signals vote: at 3B the entropy gate voted to retrieve on 104 of 200 questions and the margin gate on 107. The per-model configs are in `configs/policies/` and `results/raw_logs/p5_gated_*.yaml`.
 
 ---
 
@@ -280,6 +308,16 @@ prompt; it is left at the 5 the reported runs used.
 
 Screenshots of all three panels are in `results/figures/demo/`.
 
+### Static replay
+
+`docs/demo/index.html` is a single self-contained page (no model, no server) that replays the logged 3B runs:
+
+```bash
+python scripts/export_replay.py          # rebuild docs/demo/index.html from results/raw_logs/
+```
+
+It joins P3 (`p3_mirage200.jsonl`), P1 with retrieved chunks (`p1_medcorp_mcq_chunks.jsonl`) and P5 (`p5_medcorp_mcq.jsonl`) on question ID, recomputes the headline counts, and inlines everything into `docs/demo/template.html`. To host it, enable GitHub Pages for this repository from the `main` branch, `/docs` folder; the page is then served at `/demo/`.
+
 ---
 
 ## 9. Repository layout
@@ -294,7 +332,7 @@ results/tables/         generated LaTeX tables + numbers.tex macros
 results/figures/        generated figures (PDF + PNG)
 report/                 dissertation source (LaTeX)
 notebooks/              Colab notebook for the 7B/14B scaling runs
-docs/                   supplementary notes
+docs/                   supplementary notes; docs/demo/ is the static replay demo
 ```
 
 ---
