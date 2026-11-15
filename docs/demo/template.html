@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Adaptive Retrieval Gating: replay demo</title>
+<style>
+  :root {
+    --bg: #fafaf8; --panel: #ffffff; --ink: #1c1c1a; --muted: #6b6b66; --line: #e4e3de;
+    --good: #1f7a4d; --good-bg: #e3f3ea; --bad: #b3261e; --bad-bg: #fbe7e5;
+    --accent: #2f5fd0; --accent-bg: #e8eefc; --skip: #6b6b66; --skip-bg: #efeeea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141413; --panel: #1d1d1b; --ink: #ecebe6; --muted: #9c9b95; --line: #2f2e2b;
+      --good: #6fcf9a; --good-bg: #1b3326; --bad: #f08a82; --bad-bg: #3a1e1c;
+      --accent: #8aa9f2; --accent-bg: #1e2a45; --skip: #9c9b95; --skip-bg: #2a2a27;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 26px; line-height: 1.25; margin: 0 0 6px; letter-spacing: -0.01em; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+  .sub { color: var(--muted); margin: 0 0 24px; max-width: 760px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .stat b { display: block; font-size: 26px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .stat span { color: var(--muted); font-size: 13px; }
+  .stat.bad b { color: var(--bad); } .stat.good b { color: var(--good); }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--line); font-size: 14px; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 20px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
+  .chip { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px;
+          padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .grid { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
+    .list { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; max-height: 760px; overflow: auto; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } .list { max-height: 300px; } }
+  .scroll { overflow-x: auto; }
+  .item { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: none;
+          color: inherit; font: inherit; padding: 9px 12px; cursor: pointer; }
+  .item:hover { background: var(--bg); } .item[aria-current="true"] { background: var(--accent-bg); }
+  .item small { display: block; color: var(--muted); font-size: 12px; }
+  .item .q { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 13.5px; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; margin-right: 4px; }
+  .t-broke { background: var(--bad-bg); color: var(--bad); } .t-fixed { background: var(--good-bg); color: var(--good); }
+  .t-both_right, .t-both_wrong { background: var(--skip-bg); color: var(--skip); }
+  .t-ret { background: var(--accent-bg); color: var(--accent); } .t-skip { background: var(--skip-bg); color: var(--skip); }
+  .detail h3 { margin: 0 0 12px; font-size: 17px; line-height: 1.45; font-weight: 600; }
+  .opts { list-style: none; margin: 0 0 16px; padding: 0; }
+  .opts li { display: flex; gap: 10px; align-items: baseline; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; }
+  .opts li.gold { border-color: var(--good); background: var(--good-bg); }
+  .opts .k { font-weight: 700; width: 16px; flex: none; }
+  .opts .marks { margin-left: auto; display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .mark { font-size: 11px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); white-space: nowrap; }
+  .mark.ok { color: var(--good); border-color: var(--good); } .mark.no { color: var(--bad); border-color: var(--bad); }
+  .verdict { padding: 10px 12px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
+  .verdict.ret { background: var(--accent-bg); } .verdict.skip { background: var(--skip-bg); }
+  .gates { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+  @media (max-width: 600px) { .gates { grid-template-columns: 1fr; } }
+  .gate { border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-size: 13px; }
+  .gate b { display: block; font-size: 13px; } .gate .v { font-weight: 700; }
+  .gate .v.retrieve { color: var(--accent); } .gate .v.skip { color: var(--skip); }
+  .strip { display: flex; align-items: flex-end; gap: 2px; height: 70px; padding: 6px 0; border-bottom: 1px dashed var(--line); position: relative; }
+  .strip i { flex: 1; min-width: 3px; border-radius: 2px 2px 0 0; }
+  .strip .thr { position: absolute; left: 0; right: 0; border-top: 1.5px solid var(--bad); }
+  .legend { color: var(--muted); font-size: 12px; margin: 6px 0 16px; }
+  .chunk { border-left: 3px solid var(--line); padding: 4px 0 4px 12px; margin-bottom: 12px; font-size: 13.5px; }
+  .chunk small { color: var(--muted); display: block; }
+  .raw { margin: 0 0 16px; padding-left: 18px; font-size: 13.5px; } .raw li { margin-bottom: 4px; }
+  .raw q { color: var(--muted); }
+  footer { color: var(--muted); font-size: 13px; margin-top: 28px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Adaptive Retrieval Gating for Safety-Aware Medical RAG</h1>
+  <p class="sub">A replay of logged runs from my MSc dissertation (King's College London). For each of 200 MIRAGE medical
+    multiple-choice questions you can see the closed-book answer, the always-retrieve answer, and what the training-free gate
+    decided from the model's own signals. Nothing on this page is re-run or hand-picked: it is generated from the experiment logs.</p>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="card">
+    <h2>Does retrieval help? It depends on the model, and often it hurts</h2>
+    <div class="scroll"><table id="scaling"><thead><tr><th>Model</th><th>Closed-book</th><th>Always retrieve</th><th>Gated</th>
+      <th>Answers broken by retrieval</th><th>Answers fixed</th><th>Gate retrieval rate</th></tr></thead><tbody></tbody></table></div>
+  </div>
+
+  <h2>Browse the questions</h2>
+  <div class="filters" id="filters"></div>
+  <div class="grid">
+    <div class="list" id="list" role="list"></div>
+    <div class="card detail" id="detail"></div>
+  </div>
+
+  <footer>
+    <span id="meta"></span><br>
+    Source: <a href="https://github.com/Ideapersie/FinalProject_KCL">github.com/Ideapersie/FinalProject_KCL</a>.
+    Rebuild this page with <code>python scripts/export_replay.py</code>.
+  </footer>
+</div>
+
+<script id="replay-data" type="application/json">/*__REPLAY_DATA__*/null</script>
+<script>
+(function () {
+  "use strict";
+  var DATA = JSON.parse(document.getElementById("replay-data").textContent);
+  if (!DATA) { document.body.textContent = "No data: run scripts/export_replay.py"; return; }
+
+  var RAMP = ["#ffffb2", "#fed976", "#feb24c", "#fd8d3c", "#f03b20", "#bd0026"];
+  var LABEL = { broke: "Retrieval broke it", fixed: "Retrieval fixed it", both_right: "Both right", both_wrong: "Both wrong" };
+  var esc = function (s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  };
+  var pct = function (x) { return (100 * x).toFixed(1) + "%"; };
+  var fmt = function (x, d) { return x == null ? "n/a" : Number(x).toFixed(d == null ? 2 : d); };
+
+  // Headline stats
+  var s = DATA.summary, qs = DATA.questions;
+  var protectedN = qs.filter(function (q) { return q.category === "broke" && q.gated.correct; }).length;
+  document.getElementById("stats").innerHTML = [
+    ["bad", s.broke, "correct closed-book answers broken by retrieval"],
+    ["good", s.fixed, "wrong answers fixed by retrieval"],
+    ["", pct(s.acc_closed) + " / " + pct(s.acc_retrieve), "closed-book vs always-retrieve accuracy"],
+    ["good", protectedN + " / " + s.broke, "broken answers the gate kept correct"]
+  ].map(function (r) { return '<div class="stat ' + r[0] + '"><b>' + esc(r[1]) + "</b><span>" + esc(r[2]) + "</span></div>"; }).join("");
+
+  document.querySelector("#scaling tbody").innerHTML = DATA.scaling.map(function (m) {
+    return "<tr><td>" + esc(m.model) + "</td><td>" + pct(m.acc_closed) + "</td><td>" + pct(m.acc_retrieve) + "</td><td>" +
+      pct(m.acc_gated) + "</td><td>" + m.broke + "</td><td>" + m.fixed + "</td><td>" + pct(m.gated_retrieval_rate) + "</td></tr>";
+  }).join("");
+  document.getElementById("meta").textContent = DATA.model + ". Corpus: " + DATA.corpus + ".";
+
+  // Filters
+  var FILTERS = [
+    ["all", "All", function () { return true; }],
+    ["broke", "Retrieval broke it", function (q) { return q.category === "broke"; }],
+    ["protected", "Gate protected it", function (q) { return q.category === "broke" && q.gated.correct; }],
+    ["fixed", "Retrieval fixed it", function (q) { return q.category === "fixed"; }],
+    ["retrieved", "Gate chose to retrieve", function (q) { return q.gated.retrieved; }],
+    ["skipped", "Gate skipped retrieval", function (q) { return !q.gated.retrieved; }]
+  ];
+  var active = "broke", current = null;
+  var filtersEl = document.getElementById("filters");
+  filtersEl.innerHTML = FILTERS.map(function (f) {
+    var n = qs.filter(f[2]).length;
+    return '<button class="chip" data-f="' + f[0] + '" aria-pressed="false">' + esc(f[1]) + " (" + n + ")</button>";
+  }).join("");
+  filtersEl.addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    active = b.getAttribute("data-f"); renderList();
+  });
+
+  var listEl = document.getElementById("list");
+  listEl.addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    show(b.getAttribute("data-id"));
+  });
+
+  function renderList() {
+    Array.prototype.forEach.call(filtersEl.children, function (c) {
+      c.setAttribute("aria-pressed", String(c.getAttribute("data-f") === active));
+    });
+    var pred = FILTERS.filter(function (f) { return f[0] === active; })[0][2];
+    var items = qs.filter(pred);
+    listEl.innerHTML = items.map(function (q) {
+      return '<button class="item" role="listitem" data-id="' + esc(q.id) + '"><small><span class="tag t-' + q.category + '">' +
+        esc(LABEL[q.category]) + '</span><span class="tag ' + (q.gated.retrieved ? "t-ret" : "t-skip") + '">gate: ' +
+        (q.gated.retrieved ? "retrieve" : "skip") + "</span>" + esc(q.topic) + '</small><span class="q">' + esc(q.question) + "</span></button>";
+    }).join("") || '<p style="padding:12px;color:var(--muted)">No questions in this filter.</p>';
+    if (items.length && !items.some(function (q) { return q.id === current; })) show(items[0].id);
+    else markCurrent();
+  }
+
+  function markCurrent() {
+    Array.prototype.forEach.call(listEl.querySelectorAll(".item"), function (el) {
+      el.setAttribute("aria-current", String(el.getAttribute("data-id") === current));
+    });
+  }
+
+  function mark(label, ans, gold) {
+    return '<span class="mark ' + (ans === gold ? "ok" : "no") + '">' + esc(label) + "</span>";
+  }
+
+  function show(id) {
+    current = id; markCurrent();
+    var q = qs.filter(function (x) { return x.id === id; })[0]; if (!q) return;
+    var g = q.gate, ent = g.entropy;
+
+    var opts = Object.keys(q.options).sort().map(function (k) {
+      var m = [];
+      if (q.closed.letter === k) m.push(mark("closed-book", k, q.gold));
+      if (q.retrieve.letter === k) m.push(mark("always retrieve", k, q.gold));
+      if (q.gated.letter === k) m.push(mark("gated", k, q.gold));
+      return '<li class="' + (k === q.gold ? "gold" : "") + '"><span class="k">' + esc(k) + "</span><span>" + esc(q.options[k]) +
+        (k === q.gold ? " <small>(correct)</small>" : "") + '</span><span class="marks">' + m.join("") + "</span></li>";
+    }).join("");
+
+    var verdict = q.gated.retrieved
+      ? "The gate chose to <b>retrieve</b> (" + esc(g.retrieve_votes) + " of 3 signals voted for retrieval; " + esc(g.min_votes) + " needed)."
+      : "The gate chose to <b>skip retrieval</b> and answer from the model's own knowledge (" + esc(g.retrieve_votes) + " of 3 signals voted for retrieval; " + esc(g.min_votes) + " needed).";
+    verdict += " The gated answer was " + (q.gated.correct ? "<b>correct</b>." : "<b>wrong</b>.");
+    var raw = [["Closed-book", q.closed], ["Always retrieve", q.retrieve], ["Gated", q.gated]].map(function (r) {
+      return "<li><b>" + r[0] + ":</b> " + (r[1].letter ? "" : '<span class="mark no">no option chosen</span> ') +
+        "<q>" + esc(r[1].text) + "</q></li>";
+    }).join("");
+
+    var gates = [
+      ["Token entropy", g.votes.entropy, "mean " + fmt(ent.mean) + " nats, retrieve if > " + fmt(ent.threshold)],
+      ["Logit margin", g.votes.margin, "mean " + fmt(g.margin.mean) + ", retrieve if < " + fmt(g.margin.threshold)],
+      ["Hallucination probe", g.votes.hallucination_probe,
+        "two drafts answered " + esc(g.probe.letter_a || "?") + " and " + esc(g.probe.letter_b || "?") +
+        (g.probe.agreement ? " (agree)" : " (disagree)")]
+    ].map(function (r) {
+      return '<div class="gate"><b>' + r[0] + '</b>vote: <span class="v ' + esc(r[1]) + '">' + esc(r[1] || "n/a") + "</span><br>" + r[2] + "</div>";
+    }).join("");
+
+    var tokens = ent.per_token || [], maxH = Math.max(3, Math.max.apply(null, tokens.concat([ent.threshold || 0])));
+    var bars = tokens.map(function (h) {
+      var idx = Math.min(RAMP.length - 1, Math.floor((h / 3) * RAMP.length));
+      return '<i title="' + h.toFixed(3) + ' nats" style="height:' + Math.max(2, (h / maxH) * 100) + "%;background:" + RAMP[idx] + '"></i>';
+    }).join("");
+    var thr = ent.threshold != null ? '<div class="thr" style="bottom:' + ((ent.threshold / maxH) * 100) + '%"></div>' : "";
+
+    var chunks = q.chunks.map(function (c) {
+      return '<div class="chunk"><small>' + esc(c.source) + " &middot; " + esc(c.title) + " &middot; RRF score " + fmt(c.score, 4) +
+        "</small>" + esc(c.text) + "</div>";
+    }).join("") || "<p>No chunks logged.</p>";
+
+    document.getElementById("detail").innerHTML =
+      '<small><span class="tag t-' + q.category + '">' + esc(LABEL[q.category]) + "</span>" + esc(q.topic) + " &middot; " + esc(q.id) + "</small>" +
+      "<h3>" + esc(q.question) + "</h3><ul class=\"opts\">" + opts + "</ul>" +
+      '<div class="verdict ' + (q.gated.retrieved ? "ret" : "skip") + '">' + verdict + "</div>" +
+      "<h2>Raw model output</h2><ul class=\"raw\">" + raw + "</ul>" +
+      "<h2>What the gate saw</h2><div class=\"gates\">" + gates + "</div>" +
+      "<h2>Per-token entropy of the closed-book draft</h2><div class=\"strip\">" + bars + thr + "</div>" +
+      '<div class="legend">One bar per generated token; taller and redder is less certain. Red line: entropy threshold.</div>' +
+      "<h2>Evidence the retriever returns for this question</h2>" + chunks;
+  }
+
+  renderList();
+})();
+</script>
+</body>
+</html>

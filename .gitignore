@@ -233,3 +233,8 @@ design_handoff_portfolio/
 
 # Brainstorming visual companion scratch
 .superpowers/
+
+# Third-party papers (cite, do not redistribute) and the regenerable submission archive
+papers/*
+!papers/MSc Dissertation proposal.pdf
+submission.zip
